@@ -15,7 +15,6 @@ if str(_PROJECT_ROOT) not in sys.path:
 from datetime import datetime
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table,
     TableStyle, Image, PageBreak
@@ -23,10 +22,7 @@ from reportlab.platypus import (
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 
-from matplotlib.lines import Line2D
 from src.reporting.gemini_commentary import generate_commentary_once
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
@@ -69,15 +65,24 @@ OUT_PDF = OUT_DIR / f"Portfolio_Optimization_Report_{REPORT_DATE}.pdf"
 INVESTMENT_START_DATE = "2020-01-01"  # hoặc lấy từ user input
 
 # ======================================================
-# FONT SETUP (GLOBAL)
+# FONT SETUP (GLOBAL) - Dùng Times-Roman built-in (cross-platform)
 # ======================================================
+FONT_NAME = "Times-Roman"  # ReportLab built-in, không cần file font
 
-pdfmetrics.registerFont(TTFont("Times", r"C:\Windows\Fonts\times.ttf"))
-plt.rcParams["font.family"] = "Times New Roman"
-plt.rcParams["figure.dpi"] = 120
+
+def _ensure_matplotlib():
+    """Lazy load matplotlib để tránh load nặng khi API khởi động."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    # DejaVu Serif: font có sẵn trong matplotlib, cross-platform (không cần file font hệ thống)
+    plt.rcParams["font.family"] = "DejaVu Serif"
+    plt.rcParams["figure.dpi"] = 120
+    globals()["plt"] = plt
 
 
 def save_fig(name: str):
+    _ensure_matplotlib()
     path = IMG_DIR / name
     plt.savefig(path, dpi=150, bbox_inches="tight")
     plt.close()
@@ -89,6 +94,7 @@ def save_fig(name: str):
 # ======================================================
 
 def plot_portfolio_growth():
+    _ensure_matplotlib()
     df = pd.read_csv(
     DATA_POWERBI_DIR / "portfolio_timeseries.csv",
     parse_dates=["date"]
@@ -132,6 +138,7 @@ def plot_portfolio_growth():
 
 
 def plot_drawdown():
+    _ensure_matplotlib()
     df = pd.read_csv(
         DATA_POWERBI_DIR / "portfolio_timeseries.csv",
         parse_dates=["date"]
@@ -182,6 +189,8 @@ def plot_drawdown():
 
 
 def _plot_asset_allocation_chart():
+    _ensure_matplotlib()
+    from matplotlib.lines import Line2D
     df = pd.read_csv(DATA_POWERBI_DIR / "asset_allocation_current.csv")
 
     # Sort theo tỷ trọng giảm dần
@@ -258,6 +267,7 @@ def plot_asset_allocation():
 
 
 def plot_annual_returns():
+    _ensure_matplotlib()
     df = pd.read_csv(DATA_POWERBI_DIR / "annual_returns.csv")
 
     plt.figure(figsize=(5.4, 4))
@@ -289,6 +299,7 @@ def plot_annual_returns():
 
 
 def plot_risk_return():
+    _ensure_matplotlib()
     df = pd.read_csv(DATA_POWERBI_DIR / "asset_risk_return.csv")
 
     plt.figure(figsize=(5.8, 4.4))
@@ -369,6 +380,7 @@ symbols = list(weights.keys())
 
 
 def plot_risk_return_metrics():
+    _ensure_matplotlib()
     df = pd.read_csv(DATA_REPORT_DIR / "performance_extended.csv")
 
     df.columns = df.columns.str.lower()
@@ -448,6 +460,7 @@ def plot_risk_return_metrics():
 
 
 def plot_return_distribution():
+    _ensure_matplotlib()
     df = pd.read_csv(DATA_POWERBI_DIR / "portfolio_timeseries.csv")
     returns = df["portfolio_return"].dropna() * 100
 
@@ -554,11 +567,11 @@ def styled_table(data, col_widths=None):
         # Header
         ("BACKGROUND", (0,0), (-1,0), HEADER_BG),
         ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-        ("FONTNAME", (0,0), (-1,0), "Times"),
+        ("FONTNAME", (0,0), (-1,0), FONT_NAME),
         ("FONTSIZE", (0,0), (-1,0), 11),
 
         # Body
-        ("FONTNAME", (0,1), (-1,-1), "Times"),
+        ("FONTNAME", (0,1), (-1,-1), FONT_NAME),
         ("FONTSIZE", (0,1), (-1,-1), 10.5),
         ("BACKGROUND", (0,1), (-1,-1), ROW_BG),
 
@@ -604,7 +617,7 @@ def load_company_table_top8(page_width):
     # ===== 3. PARAGRAPH STYLE (QUAN TRỌNG NHẤT) =====
     name_style = ParagraphStyle(
         name="CompanyName",
-        fontName="Times",
+        fontName=FONT_NAME,
         fontSize=10.2,
         leading=13.5,              # khoảng cách dòng (RẤT QUAN TRỌNG)
         alignment=TA_LEFT,
@@ -617,7 +630,7 @@ def load_company_table_top8(page_width):
 
     header_style = ParagraphStyle(
         name="Header",
-        fontName="Times",
+        fontName=FONT_NAME,
         fontSize=11,
         textColor=colors.white,
         alignment=TA_LEFT
@@ -625,7 +638,7 @@ def load_company_table_top8(page_width):
 
     header_right = ParagraphStyle(
         name="HeaderRight",
-        fontName="Times",
+        fontName=FONT_NAME,
         fontSize=11,
         textColor=colors.white,
         alignment=TA_RIGHT
@@ -667,7 +680,7 @@ def load_company_table_top8(page_width):
     ("VALIGN", (0,0), (-1,0), "MIDDLE"),
 
     # Font header (KHÔNG bold – dùng size + màu)
-    ("FONTNAME", (0,0), (-1,0), "Times"),
+    ("FONTNAME", (0,0), (-1,0), FONT_NAME),
     ("FONTSIZE", (0,0), (-1,0), 11),
 
     # Padding HEADER (thoáng, không sát lề)
@@ -683,7 +696,7 @@ def load_company_table_top8(page_width):
     ("ALIGN", (2,0), (2,0), "RIGHT"),
 
     # ================= BODY =================
-    ("FONTNAME", (0,1), (-1,-1), "Times"),
+    ("FONTNAME", (0,1), (-1,-1), FONT_NAME),
     ("FONTSIZE", (0,1), (-1,-1), 10.2),
 
     # Alignment body
@@ -1030,11 +1043,11 @@ def build_pdf():
     plot_return_distribution()
 
     styles = getSampleStyleSheet()
-    styles["Title"].fontName = "Times"
+    styles["Title"].fontName = FONT_NAME
     styles["Title"].fontSize = 18
-    styles["Heading2"].fontName = "Times"
+    styles["Heading2"].fontName = FONT_NAME
     styles["Heading2"].fontSize = 13
-    styles["Normal"].fontName = "Times"
+    styles["Normal"].fontName = FONT_NAME
     styles["Normal"].fontSize = 11
 
     PAGE_W, PAGE_H = landscape(A4)
@@ -1153,11 +1166,11 @@ def build_pdf():
         # Header
         ("BACKGROUND", (0,0), (-1,0), PV_BLUE_DARK),
         ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-        ("FONTNAME", (0,0), (-1,0), "Times"),
+        ("FONTNAME", (0,0), (-1,0), FONT_NAME),
         ("FONTSIZE", (0,0), (-1,0), 11),
 
         # Body
-        ("FONTNAME", (0,1), (-1,-1), "Times"),
+        ("FONTNAME", (0,1), (-1,-1), FONT_NAME),
         ("FONTSIZE", (0,1), (-1,-1), 10.5),
         ("TEXTCOLOR", (0,1), (-1,-1), PV_TEXT_DARK),
 
@@ -1253,12 +1266,12 @@ def build_pdf():
         # ===== HEADER =====
         ("BACKGROUND", (0,0), (-1,0), PV_BLUE_DARK),
         ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-        ("FONTNAME", (0,0), (-1,0), "Times"),
+        ("FONTNAME", (0,0), (-1,0), FONT_NAME),
         ("FONTSIZE", (0,0), (-1,0), 11),
         ("ALIGN", (1,0), (-1,0), "CENTER"),
 
         # ===== BODY =====
-        ("FONTNAME", (0,1), (-1,-1), "Times"),
+        ("FONTNAME", (0,1), (-1,-1), FONT_NAME),
         ("FONTSIZE", (0,1), (-1,-1), 10.2),
         ("TEXTCOLOR", (0,1), (-1,-1), PV_TEXT_DARK),
 
@@ -1381,11 +1394,11 @@ def build_pdf():
             # Header
             ("BACKGROUND", (0,0), (-1,0), PV_BLUE_DARK),
             ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-            ("FONTNAME", (0,0), (-1,0), "Times"),
+            ("FONTNAME", (0,0), (-1,0), FONT_NAME),
             ("FONTSIZE", (0,0), (-1,0), 10.5),
 
             # Body
-            ("FONTNAME", (0,1), (-1,-1), "Times"),
+            ("FONTNAME", (0,1), (-1,-1), FONT_NAME),
             ("FONTSIZE", (0,1), (-1,-1), 10),
             ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
 
