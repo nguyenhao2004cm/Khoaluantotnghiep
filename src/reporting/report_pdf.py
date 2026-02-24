@@ -35,6 +35,8 @@ from src.portfolio_engine.risk_metric import compute_risk_metrics
 from reportlab.lib.colors import HexColor
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import cm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 import math
 from google import genai
 import json
@@ -65,9 +67,28 @@ OUT_PDF = OUT_DIR / f"Portfolio_Optimization_Report_{REPORT_DATE}.pdf"
 INVESTMENT_START_DATE = "2020-01-01"  # hoặc lấy từ user input
 
 # ======================================================
-# FONT SETUP (GLOBAL) - Dùng Times-Roman built-in (cross-platform)
+# FONT SETUP (GLOBAL) - DejaVu Serif hỗ trợ tiếng Việt (từ matplotlib)
 # ======================================================
-FONT_NAME = "Times-Roman"  # ReportLab built-in, không cần file font
+def _register_vietnamese_font():
+    """Đăng ký DejaVu Serif từ matplotlib để hiển thị tiếng Việt đúng."""
+    try:
+        import matplotlib
+        font_dir = Path(matplotlib.get_data_path()) / "fonts" / "ttf"
+        ttf_path = font_dir / "DejaVuSerif.ttf"
+        ttf_bold = font_dir / "DejaVuSerif-Bold.ttf"
+        if ttf_path.exists():
+            pdfmetrics.registerFont(TTFont("DejaVuSerif", str(ttf_path)))
+            bold_name = "DejaVuSerif"
+            if ttf_bold.exists():
+                pdfmetrics.registerFont(TTFont("DejaVuSerif-Bold", str(ttf_bold)))
+                bold_name = "DejaVuSerif-Bold"
+            pdfmetrics.registerFontFamily("DejaVuSerif", normal="DejaVuSerif", bold=bold_name)
+            return "DejaVuSerif"
+    except Exception:
+        pass
+    return "Times-Roman"  # fallback nếu không tìm thấy
+
+FONT_NAME = _register_vietnamese_font()
 
 
 def _ensure_matplotlib():
@@ -548,7 +569,8 @@ def styled_table(data, col_widths=None):
     table.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#4F81BD")),
         ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-        ("FONT", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTNAME", (0,0), (-1,0), FONT_NAME),
+        ("FONTSIZE", (0,0), (-1,0), 11),
         ("ALIGN", (1,1), (-1,-1), "RIGHT"),
         ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
         ("BACKGROUND", (0,1), (-1,-1), colors.whitesmoke),
