@@ -4,8 +4,14 @@ venv/
 __pycache__/
 *.pyc
 
-# Raw research data (không push)
-data_raw/
+# Ignore toàn bộ data_raw
+data_raw/*
+
+# Nhưng cho phép file company
+!data_raw/company.xlsx
+
+# Không cho phép thư mục stock
+data_raw/stock/
 
 # Chỉ ignore file output không cần production
 outputs/
