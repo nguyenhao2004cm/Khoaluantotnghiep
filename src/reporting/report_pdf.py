@@ -885,26 +885,43 @@ gemini_inputs["correlation"] = {
 
 COMMENTARY_CACHE = DATA_REPORT_DIR / "commentary.json"
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY"),
-    http_options={"api_version": "v1"}
-)
+# Client chỉ tạo khi có API key; nếu không có → dùng commentary mặc định
+_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+client = None
+if _api_key:
+    try:
+        client = genai.Client(api_key=_api_key)
+    except Exception:
+        client = None
+
+DEFAULT_COMMENTARY = {
+    "performance": "Nhận xét hiệu suất danh mục dựa trên biểu đồ tăng trưởng.",
+    "risk": "Nhận xét rủi ro dựa trên drawdown và các chỉ số VaR, CVaR.",
+    "annual_returns": "Nhận xét lợi nhuận theo năm.",
+    "frontier": "Vị trí danh mục so với đường biên hiệu quả mang tính tham khảo.",
+    "correlation": "Nhận xét tương quan và đa dạng hóa.",
+    "portfolio_overview": "Tổng quan chỉ số danh mục.",
+    "recommendation": "Theo dõi diễn biến thị trường và điều chỉnh danh mục phù hợp.",
+}
 
 if COMMENTARY_CACHE.exists():
     commentary = json.load(open(COMMENTARY_CACHE, encoding="utf-8"))
 else:
-    from src.reporting.gemini_commentary import generate_commentary_once
-
-    commentary = generate_commentary_once(
-        perf_dict=gemini_inputs["performance"],
-        risk_dict=gemini_inputs["risk"],
-        frontier_dict=gemini_inputs["efficient_frontier"],
-        corr_summary=gemini_inputs["correlation"],
-        annual_returns_df=annual_returns_df,
-        client=client
-    )
-
-
+    if client:
+        try:
+            from src.reporting.gemini_commentary import generate_commentary_once
+            commentary = generate_commentary_once(
+                perf_dict=gemini_inputs["performance"],
+                risk_dict=gemini_inputs["risk"],
+                frontier_dict=gemini_inputs["efficient_frontier"],
+                corr_summary=gemini_inputs["correlation"],
+                annual_returns_df=annual_returns_df,
+                client=client
+            )
+        except Exception:
+            commentary = DEFAULT_COMMENTARY.copy()
+    else:
+        commentary = DEFAULT_COMMENTARY.copy()
     with open(COMMENTARY_CACHE, "w", encoding="utf-8") as f:
         json.dump(commentary, f, ensure_ascii=False, indent=2)
 import hashlib
@@ -920,14 +937,20 @@ HASH_FILE = DATA_REPORT_DIR / "commentary.hash"
 current_hash = hash_inputs(gemini_inputs)
 
 def run_gemini():
-    return generate_commentary_once(
-        perf_dict=gemini_inputs["performance"],
-        risk_dict=gemini_inputs["risk"],
-        frontier_dict=gemini_inputs["efficient_frontier"],
-        corr_summary=gemini_inputs["correlation"],
-        annual_returns_df=annual_returns_df,
-        client=client
-    )
+    if not client:
+        return DEFAULT_COMMENTARY.copy()
+    try:
+        from src.reporting.gemini_commentary import generate_commentary_once
+        return generate_commentary_once(
+            perf_dict=gemini_inputs["performance"],
+            risk_dict=gemini_inputs["risk"],
+            frontier_dict=gemini_inputs["efficient_frontier"],
+            corr_summary=gemini_inputs["correlation"],
+            annual_returns_df=annual_returns_df,
+            client=client
+        )
+    except Exception:
+        return DEFAULT_COMMENTARY.copy()
 
 if COMMENTARY_CACHE.exists() and HASH_FILE.exists():
     if HASH_FILE.read_text(encoding="utf-8") == current_hash:
