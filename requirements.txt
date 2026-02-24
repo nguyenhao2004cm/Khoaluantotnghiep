@@ -6,3 +6,5 @@ scipy
 python-dotenv
 statsmodels
 openpyxl
+matplotlib
+seaborn
