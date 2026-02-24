@@ -1,4 +1,4 @@
-##C:\Users\ASUS\fintech-project\src\reporting\report_pdf.py
+# src/reporting/report_pdf.py
 # ======================================================
 # PORTFOLIO OPTIMIZATION REPORT (FINAL CLEAN VERSION)
 # ======================================================
@@ -603,16 +603,17 @@ def load_company_table_top8(page_width):
     top_alloc["allocation_pct"] = top_alloc["allocation_weight"] * 100
 
     # ===== 2. Load company info =====
-    company_df = pd.read_excel(
-        r"C:\Users\ASUS\fintech-project\data_raw\company.xlsx"
-    )
-
-    merged = company_df.merge(
-        top_alloc[["symbol", "allocation_pct"]],
-        left_on="Mã chứng khoán",
-        right_on="symbol",
-        how="inner"
-    ).sort_values("allocation_pct", ascending=False)
+    company_path = PROJECT_DIR / "data_raw" / "company.xlsx"
+    if not company_path.exists():
+        merged = pd.DataFrame(columns=["Tên đầy đủ", "Mã chứng khoán", "allocation_pct"])
+    else:
+        company_df = pd.read_excel(company_path)
+        merged = company_df.merge(
+            top_alloc[["symbol", "allocation_pct"]],
+            left_on="Mã chứng khoán",
+            right_on="symbol",
+            how="inner"
+        ).sort_values("allocation_pct", ascending=False)
 
     # ===== 3. PARAGRAPH STYLE (QUAN TRỌNG NHẤT) =====
     name_style = ParagraphStyle(
