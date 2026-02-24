@@ -13,8 +13,11 @@ Reports/
 *.pbit
 
 # images large
+# large outputs
+*.csv
+*.xlsx
+*.pdf
 *.png
-*.jpg
 
 
 # cache
