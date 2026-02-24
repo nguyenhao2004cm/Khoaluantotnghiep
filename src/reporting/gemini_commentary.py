@@ -84,6 +84,12 @@ Quy định bắt buộc:
   Nhận xét DUY NHẤT dựa trên chỉ số tương quan tổng hợp.
   Phải liên hệ đến khả năng đa dạng hóa và giảm rủi ro hệ thống.
 
+- recommendation (Khuyến nghị đầu tư):
+  BẮT BUỘC: Nhận xét TỔNG HỢP về toàn bộ danh mục dựa trên tất cả dữ liệu đã cung cấp.
+  Phải tóm tắt điểm mạnh, điểm yếu, mức độ rủi ro và triển vọng của danh mục.
+  CẤM: Không được yêu cầu phân tích thêm, không được khuyến nghị "tiếp tục phân tích chi tiết",
+  không được yêu cầu cung cấp thêm thông tin. Phần này phải là KẾT LUẬN TỔNG HỢP, không phải gợi ý hành động tiếp theo.
+
 ========================
 TRẢ KẾT QUẢ DƯỚI DẠNG JSON
 ========================
@@ -122,7 +128,7 @@ TRẢ KẾT QUẢ DƯỚI DẠNG JSON
             "frontier": "Vị trí danh mục so với đường biên hiệu quả mang tính tham khảo.",
             "correlation": "Nhận xét tương quan và đa dạng hóa.",
             "portfolio_overview": "Tổng quan chỉ số danh mục.",
-            "recommendation": "Theo dõi diễn biến thị trường và điều chỉnh danh mục phù hợp.",
+            "recommendation": "Nhận xét tổng hợp về danh mục dựa trên hiệu suất, rủi ro và đa dạng hóa.",
         }
         for k, v in defaults.items():
             if k not in out or not out[k]:

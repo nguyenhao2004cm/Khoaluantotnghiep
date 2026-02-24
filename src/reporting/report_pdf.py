@@ -924,7 +924,7 @@ DEFAULT_COMMENTARY = {
     "frontier": "Vị trí danh mục so với đường biên hiệu quả mang tính tham khảo.",
     "correlation": "Nhận xét tương quan và đa dạng hóa.",
     "portfolio_overview": "Tổng quan chỉ số danh mục.",
-    "recommendation": "Theo dõi diễn biến thị trường và điều chỉnh danh mục phù hợp.",
+    "recommendation": "Nhận xét tổng hợp về danh mục dựa trên hiệu suất, rủi ro và đa dạng hóa.",
 }
 
 if COMMENTARY_CACHE.exists():
@@ -1424,91 +1424,52 @@ def build_pdf():
     elements.append(Spacer(1, 4))
 
     # =========================
-    # 3. BẢNG DRAWDOWN – CHIA 2, DÍNH SÁT, ÉP XUỐNG DƯỚI
+    # 3. BẢNG DRAWDOWN – MỘT BẢNG ĐẦY ĐỦ, colWidths CỐ ĐỊNH TRÁNH TRÀN/ĐÈ
     # =========================
     drawdown_data = load_table(FILES["drawdown"])
-    header = drawdown_data[0]
-    rows = drawdown_data[1:]
-
-    mid = (len(rows) + 1) // 2
-    left_rows = rows[:mid]
-    right_rows = rows[mid:]
+    tbl_width = PAGE_W * 0.90
+    col_w = [tbl_width * 0.22, tbl_width * 0.22, tbl_width * 0.26, tbl_width * 0.30]  # 4 cột
 
     def styled_drawdown_table(data):
-        table = Table(data, repeatRows=1)
+        table = Table(data, colWidths=col_w, repeatRows=1)
         table.setStyle(TableStyle([
             # Header
             ("BACKGROUND", (0,0), (-1,0), PV_BLUE_DARK),
             ("TEXTCOLOR", (0,0), (-1,0), colors.white),
             ("FONTNAME", (0,0), (-1,0), FONT_NAME),
-            ("FONTSIZE", (0,0), (-1,0), 10.5),
+            ("FONTSIZE", (0,0), (-1,0), 10),
 
             # Body
             ("FONTNAME", (0,1), (-1,-1), FONT_NAME),
-            ("FONTSIZE", (0,1), (-1,-1), 10),
+            ("FONTSIZE", (0,1), (-1,-1), 9),
             ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
 
-            # Padding bảng con
-            ("LEFTPADDING", (0,0), (-1,-1), 8),
-            ("RIGHTPADDING", (0,0), (-1,-1), 8),
+            # Padding
+            ("LEFTPADDING", (0,0), (-1,-1), 6),
+            ("RIGHTPADDING", (0,0), (-1,-1), 6),
             ("TOPPADDING", (0,0), (-1,-1), 5),
             ("BOTTOMPADDING", (0,0), (-1,-1), 5),
 
-            #  GRID CHỈ VẼ VIỀN NGOÀI
-            ("BOX", (0,0), (-1,-1), 0.6, PV_BLUE_GRID),
-            ("INNERGRID", (0,0), (-1,-1), 0.6, PV_BLUE_GRID),
+            # Khung rõ ràng: BOX + INNERGRID
+            ("BOX", (0,0), (-1,-1), 1, PV_BLUE_GRID),
+            ("INNERGRID", (0,0), (-1,-1), 1, PV_BLUE_GRID),
         ]))
 
         # Zebra rows
         for i in range(1, len(data)):
             bg = colors.whitesmoke if i % 2 == 1 else PV_BLUE_LIGHT
-            table.setStyle(
-                TableStyle([("BACKGROUND", (0,i), (-1,i), bg)])
-            )
+            table.setStyle(TableStyle([("BACKGROUND", (0,i), (-1,i), bg)]))
 
         return table
 
-
-
-    left_table = styled_drawdown_table([header] + left_rows)
-    right_table = styled_drawdown_table([header] + right_rows)
-
-    bottom_table = Table(
-        [[left_table, right_table]],
-        colWidths=[
-            PAGE_W * 0.44,
-            PAGE_W * 0.44
-        ],
-        hAlign="CENTER"   #  CANH GIỮA
-    )
-
-    bottom_table.setStyle(TableStyle([
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-
-        #  ZERO PADDING → KHÔNG CÓ KHE
-        ("LEFTPADDING", (0,0), (-1,-1), 0),
-        ("RIGHTPADDING", (0,0), (-1,-1), 0),
-        ("TOPPADDING", (0,0), (-1,-1), 2),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 2),
-    ]))
-
-
-    bottom_table.setStyle(TableStyle([
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-
-        #  KHÔNG CÓ KHOẢNG CÁCH GIỮA 2 BẢNG
-        ("LEFTPADDING", (0,0), (-1,-1), 0),
-        ("RIGHTPADDING", (0,0), (-1,-1), 0),
-        ("TOPPADDING", (0,0), (-1,-1), 2),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 2),
-    ]))
+    drawdown_table = styled_drawdown_table(drawdown_data)
 
     # Đẩy cụm bảng xuống sát đáy trang
     elements.append(Spacer(1, PAGE_H * 0.03))
 
     elements.append(
         KeepTogether([
-            bottom_table
+            drawdown_table
         ])
     )
 
