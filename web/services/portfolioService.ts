@@ -1,5 +1,5 @@
 import { PortfolioRequest, PortfolioResult } from "../types";
-import { API_BASE } from "../apiConfig";
+import { API_BASE } from "../src/api/apiConfig";
 
 export type PortfolioTimeseriesPoint = {
   date: string;

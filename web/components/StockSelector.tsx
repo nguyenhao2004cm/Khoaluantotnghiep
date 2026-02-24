@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { API_BASE } from "../apiConfig";
+import { API_BASE } from "../src/api/apiConfig";
 
 export interface CompanySuggestion {
   ma: string;

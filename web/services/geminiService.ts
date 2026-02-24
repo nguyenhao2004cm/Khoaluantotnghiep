@@ -2,7 +2,7 @@
 // Explainability layer: frontend chỉ gọi backend, không gọi Gemini trực tiếp.
 
 import { ChatContext, ChatMessage } from "../types";
-import { API_BASE } from "../apiConfig";
+import { API_BASE } from "../src/api/apiConfig";
 
 export class GeminiService {
   async getAdvice(
