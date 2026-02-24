@@ -1,0 +1,7 @@
+{
+  "name": "AI-driven Regime-Aware Portfolio Optimization",
+  "description": "Nền tảng tối ưu hóa danh mục đầu tư dựa trên nhận diện trạng thái rủi ro thị trường (Regime-Aware) sử dụng AI latent risk.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

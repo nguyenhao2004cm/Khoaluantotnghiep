@@ -1,0 +1,11 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": [],
+    "python.analysis.extraPaths": [
+        "./src/portfolio_engine"
+    ],
+    "git.ignoreLimitWarning": true,
+    "cursorpyright.analysis.extraPaths": [
+        "./src/portfolio_engine"
+    ]
+}
