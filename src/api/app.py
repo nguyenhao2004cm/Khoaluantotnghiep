@@ -25,6 +25,7 @@ app.add_middleware(
         "https://khoaluantotnghiep-jet.vercel.app",
         "https://www.khoaluantotnghiep-jet.vercel.app",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
