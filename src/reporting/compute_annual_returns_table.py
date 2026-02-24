@@ -18,7 +18,7 @@ df = df.dropna(subset=["portfolio_return"])
 # =========================
 monthly = (
     df.set_index("date")["portfolio_return"]
-      .resample("M")
+      .resample("ME")
       .apply(lambda x: (1 + x).prod() - 1)
       .to_frame("monthly_return")
       .reset_index()

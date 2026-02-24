@@ -36,7 +36,7 @@ def build_monthly_correlation():
     # Lợi nhuận tháng (geometric)
     monthly_returns = (
         (1 + daily_returns)
-        .resample("M")
+        .resample("ME")
         .prod()
         - 1
     )
