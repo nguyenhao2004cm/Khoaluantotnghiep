@@ -126,8 +126,8 @@ const PortfolioOptimizer: React.FC = () => {
 
       {/* Empty / Loading state */}
       {!result && !isProcessing && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-16 flex flex-col items-center justify-center text-center">
-          <Target size={56} className="text-zinc-600 mb-4" />
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 sm:p-16 flex flex-col items-center justify-center text-center">
+          <Target size={48} className="text-zinc-600 mb-4 sm:size-14" />
           <h4 className="text-zinc-400 text-lg font-medium mb-2">
           </h4>
           <p className="text-zinc-500 text-sm max-w-md">
@@ -138,8 +138,8 @@ const PortfolioOptimizer: React.FC = () => {
       )}
 
       {isProcessing && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-16 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 border-4 border-zinc-700 border-t-sky-500 rounded-full animate-spin mb-6" />
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 sm:p-16 flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-zinc-700 border-t-sky-500 rounded-full animate-spin mb-6" />
           <h4 className="text-white text-lg font-medium">
             Đang tối ưu hóa danh mục
           </h4>
@@ -186,11 +186,11 @@ const PortfolioOptimizer: React.FC = () => {
           </div>
 
           {/* Biểu đồ tăng trưởng – full width */}
-          <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800">
+          <div className="bg-zinc-900 p-4 sm:p-8 rounded-2xl border border-zinc-800">
             <h2 className="text-lg font-semibold text-white mb-6">
               Biểu đồ tăng trưởng tài sản
             </h2>
-            <div className="h-[320px]">
+            <div className="h-[260px] sm:h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={result.growth_series} margin={{ left: 20, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.4} />
@@ -225,7 +225,7 @@ const PortfolioOptimizer: React.FC = () => {
           </div>
 
           {/* Drawdown + Risk-Return – 2 cột */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
               <h3 className="mb-4 font-medium text-white">Giá trị sụt giảm danh mục</h3>
               <div className="h-[240px]">
@@ -338,8 +338,8 @@ const PortfolioOptimizer: React.FC = () => {
           </div>
 
           {/* Lợi nhuận năm (dài) | Phân bổ tài sản (ngắn) */}
-          <div className="grid grid-cols-3 gap-6">
-            <div className="col-span-2 bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-zinc-900 p-4 sm:p-6 rounded-2xl border border-zinc-800">
               <h3 className="mb-4 font-medium text-white">
                 Lợi nhuận hàng năm
               </h3>
@@ -377,7 +377,7 @@ const PortfolioOptimizer: React.FC = () => {
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="col-span-1 bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+            <div className="lg:col-span-1 bg-zinc-900 p-4 sm:p-6 rounded-2xl border border-zinc-800">
               <h3 className="mb-4 font-medium text-white">
                 Phân bổ danh mục tài sản
               </h3>

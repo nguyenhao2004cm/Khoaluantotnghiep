@@ -8,9 +8,14 @@ import numpy as np
 from pathlib import Path
 
 # =========================
-# PATHS
+# PATHS & CONFIG
 # =========================
+import os
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
+
+# Walk-forward: chỉ dùng dữ liệu đến cutoff (tránh look-ahead)
+DATA_CUTOFF = os.environ.get("DATA_CUTOFF_DATE")  # e.g. "2019-12-31"
 
 RISK_DIR = PROJECT_DIR / "data_processed" / "risk_normalized"
 OUT_DIR  = PROJECT_DIR / "data_processed" / "reporting"
@@ -26,7 +31,8 @@ frames = []
 for f in RISK_DIR.glob("*_risk_norm.csv"):
     symbol = f.stem.replace("_risk_norm", "")
     df = pd.read_csv(f, parse_dates=["date"])
-
+    if DATA_CUTOFF:
+        df = df[df["date"] <= pd.to_datetime(DATA_CUTOFF)]
     #  CRITICAL: dùng risk_z liên tục, không chỉ risk_regime
     frames.append(
         df[["date", "risk_z"]].assign(symbol=symbol)
@@ -67,26 +73,37 @@ summary["high_intensity_smooth"] = (
 )
 
 # =========================
-# REGIME CLASSIFICATION (INERTIAL)
+# REGIME CLASSIFICATION — QUANTILE-BASED (bắt buộc 3 pha)
+# Thay threshold cố định bằng quantile → phù hợp emerging market
 # =========================
-def classify(row):
+def classify_quantile(series):
     """
-    Regime logic:
-    - HIGH: sustained positive stress (mean_risk_z > 0.25, >15% assets in stress)
-    - LOW: sustained calm
-    - NORMAL: transitional
+    Quantile-based: 33% LOW, 34% NORMAL, 33% HIGH.
+    Dùng expanding quantiles để tránh look-ahead.
     """
-    mz = row["mean_risk_z_smooth"]
-    hi = row["high_intensity_smooth"]
-    li = row["low_intensity"]
-    if pd.notna(mz) and pd.notna(hi) and mz > 0.25 and hi > 0.15:
-        return "HIGH"
-    elif pd.notna(mz) and pd.notna(li) and mz < -0.25 and li > 0.15:
-        return "LOW"
-    else:
-        return "NORMAL"
+    out = []
+    for i in range(len(series)):
+        if i < 20:  # Warm-up
+            out.append("NORMAL")
+            continue
+        hist = series.iloc[: i + 1].dropna()
+        if len(hist) < 20:
+            out.append("NORMAL")
+            continue
+        low_th = hist.quantile(0.33)
+        high_th = hist.quantile(0.66)
+        val = series.iloc[i]
+        if pd.isna(val):
+            out.append("NORMAL")
+        elif val <= low_th:
+            out.append("LOW")
+        elif val >= high_th:
+            out.append("HIGH")
+        else:
+            out.append("NORMAL")
+    return out
 
-summary["portfolio_risk_regime_raw"] = summary.apply(classify, axis=1)
+summary["portfolio_risk_regime_raw"] = classify_quantile(summary["mean_risk_z_smooth"])
 
 # =========================
 # REGIME INERTIA (HYSTERESIS)

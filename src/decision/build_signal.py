@@ -20,6 +20,7 @@ import numpy as np
 BASE_DIR = os.getcwd()
 INPUT_DIR = os.path.join(BASE_DIR, "data_processed", "risk_normalized")
 OUTPUT_DIR = os.path.join(BASE_DIR, "data_processed", "decision")
+DATA_CUTOFF = os.environ.get("DATA_CUTOFF_DATE")  # Walk-forward
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # =====================================================
@@ -37,6 +38,8 @@ for file in os.listdir(INPUT_DIR):
         parse_dates=["date"]
     )
 
+    if DATA_CUTOFF:
+        df = df[df["date"] <= pd.to_datetime(DATA_CUTOFF)]
     df["symbol"] = symbol
     frames.append(df[["date", "symbol", "risk_z"]])
 

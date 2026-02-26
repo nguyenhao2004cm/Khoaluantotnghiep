@@ -54,10 +54,10 @@ const ConfigBar: React.FC<ConfigBarProps> = ({
     onTimeRangeChange?.(r);
   };
   return (
-  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md">
-    <div className="grid grid-cols-12 gap-6 items-end">
+  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-md">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-end">
       {/* Danh mục cổ phiếu */}
-      <div className="col-span-3">
+      <div className="lg:col-span-3">
         <label className="text-sm text-zinc-400 block mb-2">
           Danh mục cổ phiếu
         </label>
@@ -82,7 +82,7 @@ const ConfigBar: React.FC<ConfigBarProps> = ({
       </div>
 
       {/* Giá trị danh mục ban đầu */}
-      <div className="col-span-2">
+      <div className="lg:col-span-2">
         <label className="text-sm text-zinc-400 block mb-2">
           Giá trị danh mục ban đầu (VNĐ)
         </label>
@@ -101,14 +101,14 @@ const ConfigBar: React.FC<ConfigBarProps> = ({
       </div>
 
       {/* Time Filter */}
-      <div className="col-span-2">
+      <div className="lg:col-span-2">
         <label className="text-sm text-zinc-400 block mb-2">Khoảng thời gian</label>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           {(["3M", "6M", "1Y", "3Y", "MAX"] as const).map((r) => (
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all min-w-[2.5rem] ${
                 timeRange === r
                   ? "bg-sky-500 text-white"
                   : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
@@ -121,7 +121,7 @@ const ConfigBar: React.FC<ConfigBarProps> = ({
       </div>
 
       {/* Ngày bắt đầu */}
-      <div className="col-span-2">
+      <div className="lg:col-span-2">
         <StartDatePicker
           value={startDate}
           onChange={onStartDateChange}
@@ -130,16 +130,16 @@ const ConfigBar: React.FC<ConfigBarProps> = ({
       </div>
 
       {/* Khẩu vị rủi ro */}
-      <div className="col-span-2">
+      <div className="lg:col-span-2">
         <label className="text-sm text-zinc-400 block mb-2">
           Khẩu vị rủi ro
         </label>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           {RISK_OPTIONS.map((key) => (
             <button
               key={key}
               onClick={() => onRiskChange(key)}
-              className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+              className={`px-3 py-2 sm:px-4 rounded-xl border text-xs sm:text-sm font-medium transition-all ${
                 riskAppetite === key
                   ? "bg-sky-500 border-sky-500 text-white"
                   : "border-zinc-700 text-zinc-400 hover:border-sky-500"
@@ -152,11 +152,11 @@ const ConfigBar: React.FC<ConfigBarProps> = ({
       </div>
 
       {/* Nút chạy */}
-      <div className="col-span-2">
+      <div className="lg:col-span-2">
         <button
           onClick={onRun}
           disabled={isProcessing || selectedAssets.length === 0}
-          className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white py-3 rounded-xl font-medium transition-all"
+          className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white py-3 rounded-xl font-medium transition-all min-h-[44px] touch-manipulation"
         >
           {isProcessing ? "Đang phân tích..." : "Phân tích"}
         </button>

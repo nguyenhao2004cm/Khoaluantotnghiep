@@ -42,7 +42,7 @@ def fix_obvious_errors(df, symbol):
         df.loc[zero_mask, "close"] = np.nan
         print(f" {symbol}: replaced {zero_mask.sum()} zero prices with NaN")
 
-    # --- 3. Detect only extreme corruption using log-returns
+    # --- 3. Detect extreme corruption (decimal shift ~10x, 100x, 1000x)
     df["log_ret"] = np.log(df["close"] / df["close"].shift(1))
     insane_mask = df["log_ret"].abs() > MAX_LOG_RETURN
 
@@ -54,23 +54,67 @@ def fix_obvious_errors(df, symbol):
             if i == 0:
                 continue
 
-            prev_p = df.iloc[i - 1]["close"]
-            curr_p = df.iloc[i]["close"]
-
+            prev_idx = df.index[i - 1]
+            prev_p = df.loc[prev_idx, "close"]
+            curr_p = df.loc[idx, "close"]
             ratio = curr_p / prev_p
 
-            # decimal shift correction
+            # curr quá cao (ratio ~ 10, 100, 1000) → chia curr
             if np.isclose(ratio, 10, rtol=0.2):
                 df.loc[idx, "close"] = curr_p / 10
             elif np.isclose(ratio, 100, rtol=0.2):
                 df.loc[idx, "close"] = curr_p / 100
+            elif np.isclose(ratio, 1000, rtol=0.2):
+                df.loc[idx, "close"] = curr_p / 1000
+            # prev quá cao (ratio ~ 0.1, 0.01, 0.001) → chia prev
+            elif ratio < 0.02 and ratio > 0:
+                if np.isclose(ratio, 0.1, rtol=0.3):
+                    df.loc[prev_idx, "close"] = prev_p / 10
+                elif np.isclose(ratio, 0.01, rtol=0.3):
+                    df.loc[prev_idx, "close"] = prev_p / 100
+                elif np.isclose(ratio, 0.001, rtol=0.3):
+                    df.loc[prev_idx, "close"] = prev_p / 1000
+            # curr quá thấp (1/ratio ~ 10, 100, 1000) → nhân curr
             elif np.isclose(1 / ratio, 10, rtol=0.2):
                 df.loc[idx, "close"] = curr_p * 10
+            elif np.isclose(1 / ratio, 100, rtol=0.2):
+                df.loc[idx, "close"] = curr_p * 100
+            elif np.isclose(1 / ratio, 1000, rtol=0.2):
+                df.loc[idx, "close"] = curr_p * 1000
 
-        # recompute
+        # recompute và lặp tối đa 2 lần (fix prev có thể tạo jump mới)
+        for _ in range(2):
+            df["log_ret"] = np.log(df["close"] / df["close"].shift(1))
+            insane_mask = df["log_ret"].abs() > MAX_LOG_RETURN
+            if not insane_mask.any():
+                break
+            for idx in df[insane_mask].index:
+                i = df.index.get_loc(idx)
+                if i == 0:
+                    continue
+                prev_idx = df.index[i - 1]
+                prev_p = df.loc[prev_idx, "close"]
+                curr_p = df.loc[idx, "close"]
+                ratio = curr_p / prev_p
+                if np.isclose(ratio, 1000, rtol=0.2):
+                    df.loc[idx, "close"] = curr_p / 1000
+                elif np.isclose(ratio, 100, rtol=0.2):
+                    df.loc[idx, "close"] = curr_p / 100
+                elif np.isclose(ratio, 10, rtol=0.2):
+                    df.loc[idx, "close"] = curr_p / 10
+                elif ratio < 0.02 and ratio > 0:
+                    if ratio < 0.002:
+                        df.loc[prev_idx, "close"] = prev_p / 1000
+                    elif ratio < 0.02:
+                        df.loc[prev_idx, "close"] = prev_p / 100
+                elif ratio > 50:
+                    if ratio > 500:
+                        df.loc[idx, "close"] = curr_p / 1000
+                    else:
+                        df.loc[idx, "close"] = curr_p / 100
+
         df["log_ret"] = np.log(df["close"] / df["close"].shift(1))
         insane_mask = df["log_ret"].abs() > MAX_LOG_RETURN
-
         if insane_mask.any():
             print(f" {symbol}: dropped {insane_mask.sum()} unrecoverable points")
             df = df.loc[~insane_mask]
@@ -163,7 +207,7 @@ def main():
 
     print("\n FINAL SUMMARY")
     print(f"   Symbols kept: {prices['symbol'].nunique()}")
-    print(f"   Date range : {prices['date'].min():%Y-%m-%d} → {prices['date'].max():%Y-%m-%d}")
+    print(f"   Date range : {prices['date'].min():%Y-%m-%d} to {prices['date'].max():%Y-%m-%d}")
     print("   Philosophy preserved: NO smoothing, NO truncation, FULL tails")
 
 if __name__ == "__main__":

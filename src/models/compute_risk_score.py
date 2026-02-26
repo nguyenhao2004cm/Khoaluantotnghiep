@@ -62,7 +62,7 @@ def _for_file(path):
 
             pred_latent = model(x).cpu().numpy()[0]
 
-            #  Risk score = latent magnitude
+            # Risk score = composite latent (L2 norm: sqrt(Z1²+Z2²+Z3²))
             risk = np.sqrt(np.sum(pred_latent ** 2))
 
             risks.append(risk)

@@ -28,7 +28,7 @@ const PortfolioOptimizerKPIGrid: React.FC<KPIGridProps> = ({ metrics }) => (
       return (
         <div
           key={key}
-          className="bg-zinc-900 p-5 rounded-2xl border border-zinc-800"
+          className="bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-800"
         >
           <p className="text-xs text-zinc-400 mb-1 truncate">{label}</p>
           <p className={`text-xl font-bold ${color}`}>

@@ -7,29 +7,28 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-black text-white">
       {/* Top Navigation - Dark glass */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-black/90 border-b border-[#2a2a2a] shadow-lg">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <img
               src="/LOGO.png"
               alt="Logo"
-              className="h-10 w-10 object-contain"
+              className="h-8 w-8 sm:h-10 sm:w-10 object-contain flex-shrink-0"
             />
-            <div>
-              <span className="text-lg font-semibold tracking-tight text-white">
+            <div className="min-w-0">
+              <span className="text-sm sm:text-lg font-semibold tracking-tight text-white block truncate">
                 Nền tảng tối ưu hóa danh mục đầu tư
               </span>
-              <span className="hidden sm:inline ml-2 text-[10px] font-medium text-sky-400 uppercase tracking-wider">
+              <span className="hidden sm:inline text-[10px] font-medium text-sky-400 uppercase tracking-wider">
                 Fintech
               </span>
             </div>
           </div>
-
         </div>
       </header>
 
       {/* Main Content - Full Width */}
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <PortfolioOptimizer />
       </main>
 

@@ -56,6 +56,7 @@ def main():
         ("src/data/prepare_prices.py",
          "Prepare price panel from raw data"),
 
+
         # =====================================================
         # STAGE 1 – FEATURE ENGINEERING
         # =====================================================
@@ -63,7 +64,7 @@ def main():
          "Build technical & market features"),
         ("src/features/build_risk_features.py",
          "Build technical & market risk features"),
-        # =====================================================
+        #=====================================================
         # STAGE 2 – LATENT REPRESENTATION
         # =====================================================
         ("src/models/train_autoencoder.py",
@@ -144,7 +145,13 @@ def main():
          "Export datasets for Power BI"),
 
         # =====================================================
-        # STAGE 9 – AUTO PDF REPORT
+        # STAGE 9 – BACKTEST (multi-year, benchmark, crisis)
+        # =====================================================
+        ("-m src.backtest.run_all_backtest",
+         "Run backtest: multi-year, benchmark comparison, allocation charts, crisis stress test"),
+
+        # =====================================================
+        # STAGE 10 – AUTO PDF REPORT
         # =====================================================
         ("-m src.reporting.report_pdf",
          "Generate PDF portfolio report with AI commentary"),

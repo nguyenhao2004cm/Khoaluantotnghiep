@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy.optimize import minimize
 
@@ -98,6 +97,8 @@ def compute_efficient_frontier(mean_returns, cov_matrix, n_points=50):
 # PLOT — PV STYLE
 # =====================================
 def plot_asset_risk_return(asset_stats, frontier_vols, frontier_rets):
+    import matplotlib.pyplot as plt
+
     plt.figure(figsize=(9, 6))
 
     # Efficient Frontier (LINE)

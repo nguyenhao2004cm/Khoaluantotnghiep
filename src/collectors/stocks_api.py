@@ -15,23 +15,51 @@ PRICE_COLS = ["open", "high", "low", "close"]
 # ================================
 # UTILS
 # ================================
+def _get_price_cols(df: pd.DataFrame) -> list:
+    """Lấy các cột giá có trong df."""
+    return [c for c in PRICE_COLS if c in df.columns]
+
+
 def normalize_price_unit(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Chuẩn hóa đơn vị giá:
-    - Nếu giá < 100 → đang ở đơn vị 'nghìn đồng' → nhân 1000
+    Chuẩn hóa đơn vị giá an toàn:
+    - Nếu giá trung vị < 1000 → khả năng ở đơn vị nghìn → nhân 1000
+    - Nếu giá > 10 triệu → có thể lỗi → chia 1000
     """
-    median_price = df[PRICE_COLS].median().median()
+    cols = _get_price_cols(df)
+    if not cols:
+        return df
 
-    if median_price < 100:
-        df[PRICE_COLS] = df[PRICE_COLS] * 1000
+    median_price = df[cols].median().median()
+
+    if median_price < 1000:
+        df[cols] = df[cols] * 1000
+    elif median_price > 10_000_000:
+        df[cols] = df[cols] / 1000
 
     return df
+
+
+def validate_price_scale(df: pd.DataFrame, symbol: str) -> None:
+    """
+    Validation phát hiện lỗi scale.
+    Cổ phiếu VN: ngân hàng 10k–60k, bluechip 40k–150k, penny < 10k.
+    """
+    cols = _get_price_cols(df)
+    if not cols or "close" not in df.columns:
+        return
+
+    med = df["close"].median()
+    if med < 1000:
+        print(f"  {symbol}: gia qua nho (median={med:.0f}) -> co the sai don vi")
+    elif med > 5_000_000:
+        print(f"  {symbol}: gia qua lon (median={med:.0f}) -> can kiem tra")
 
 
 # ================================
 # CORE API
 # ================================
-def get_stock_history(symbol: str, start="2018-01-01", end=None):
+def get_stock_history(symbol: str, start="2015-01-01", end=None):
 
     if end is None:
         end = pd.Timestamp.today().strftime("%Y-%m-%d")
@@ -72,36 +100,41 @@ def get_stock_history(symbol: str, start="2018-01-01", end=None):
 # ================================
 def update_stock_daily(symbol: str):
     """
-    - Chưa có file → tải full
-    - Có file → append ngày mới
+    - Chưa có file → tải full từ 2015
+    - Có file → chuẩn hóa data cũ, append ngày mới
     """
     file_path = os.path.join(DATA_DIR, f"{symbol}.csv")
 
-    # ===== LẦN ĐẦU =====
+    # ========= FIRST BUILD =========
     if not os.path.exists(file_path):
-        print(f"⬇️ Tải lần đầu: {symbol}")
-        df = get_stock_history(symbol)
+        print(f"  Build full history: {symbol}")
+        df = get_stock_history(symbol, start="2015-01-01")
         if df is not None:
+            validate_price_scale(df, symbol)
             df.to_csv(file_path, index=False)
         return
 
-    # ===== UPDATE =====
+    # ========= LOAD OLD =========
     df_old = pd.read_csv(file_path, parse_dates=["date"])
+    df_old = normalize_price_unit(df_old)
+
     last_date = df_old["date"].max()
+    start_new = last_date + timedelta(days=1)
+    end = pd.Timestamp.today()
 
-    start_new = (last_date + timedelta(days=1)).strftime("%Y-%m-%d")
-    end = pd.Timestamp.today().strftime("%Y-%m-%d")
-
-    if pd.to_datetime(start_new) > pd.to_datetime(end):
-        print(f" {symbol} đã cập nhật đến {last_date.date()}")
+    if start_new > end:
+        print(f"  {symbol} up-to-date")
         return
 
-    print(f"🔄 Cập nhật {symbol}: {start_new} → {end}")
-    df_new = get_stock_history(symbol, start=start_new, end=end)
+    print(f"  Updating {symbol}: {start_new.date()} -> {end.date()}")
+    df_new = get_stock_history(symbol, start=start_new.strftime("%Y-%m-%d"))
 
+    if df_new is None:
+        return
 
     df_all = pd.concat([df_old, df_new], ignore_index=True)
     df_all.drop_duplicates(subset=["date"], inplace=True)
     df_all.sort_values("date", inplace=True)
 
+    validate_price_scale(df_all, symbol)
     df_all.to_csv(file_path, index=False)

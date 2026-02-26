@@ -20,7 +20,6 @@ Used here only as a geometric reference, NOT as an optimization engine.
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from pathlib import Path
 
@@ -164,6 +163,8 @@ def plot_efficient_frontier_reference(
     )
 
     # ---------- Plot ----------
+    import matplotlib.pyplot as plt
+
     plt.figure(figsize=(10, 6))
 
     plt.plot(

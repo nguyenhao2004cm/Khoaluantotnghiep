@@ -1,9 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")  # Non-interactive backend khi chạy từ pipeline
-import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
 
 # =====================================
@@ -60,6 +56,11 @@ def compute_monthly_returns(prices):
 # PLOT CORRELATION HEATMAP
 # =====================================
 def plot_correlation_heatmap(monthly_returns):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     corr = monthly_returns.corr()
 
     plt.figure(figsize=(10, 8))
