@@ -908,12 +908,12 @@ gemini_inputs["correlation"] = {
 
 COMMENTARY_CACHE = DATA_REPORT_DIR / "commentary.json"
 
-# Client chỉ tạo khi có API key; nếu không có → dùng commentary mặc định
+# Client Gemini: dùng api_key (vertexai=False để tránh lỗi trên Render)
 _api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 client = None
 if _api_key:
     try:
-        client = genai.Client(api_key=_api_key)
+        client = genai.Client(api_key=_api_key, vertexai=False)
     except Exception:
         client = None
 
@@ -927,35 +927,14 @@ DEFAULT_COMMENTARY = {
     "recommendation": "Nhận xét tổng hợp về danh mục dựa trên hiệu suất, rủi ro và đa dạng hóa.",
 }
 
-if COMMENTARY_CACHE.exists():
-    commentary = json.load(open(COMMENTARY_CACHE, encoding="utf-8"))
-else:
-    if client:
-        try:
-            from src.reporting.gemini_commentary import generate_commentary_once
-            commentary = generate_commentary_once(
-                perf_dict=gemini_inputs["performance"],
-                risk_dict=gemini_inputs["risk"],
-                frontier_dict=gemini_inputs["efficient_frontier"],
-                corr_summary=gemini_inputs["correlation"],
-                annual_returns_df=annual_returns_df,
-                client=client
-            )
-        except Exception:
-            commentary = DEFAULT_COMMENTARY.copy()
-    else:
-        commentary = DEFAULT_COMMENTARY.copy()
-    with open(COMMENTARY_CACHE, "w", encoding="utf-8") as f:
-        json.dump(commentary, f, ensure_ascii=False, indent=2)
 import hashlib
+
+HASH_FILE = DATA_REPORT_DIR / "commentary.hash"
 
 def hash_inputs(d):
     return hashlib.md5(
         json.dumps(d, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()
-
-COMMENTARY_CACHE = DATA_REPORT_DIR / "commentary.json"
-HASH_FILE = DATA_REPORT_DIR / "commentary.hash"
 
 current_hash = hash_inputs(gemini_inputs)
 
@@ -1389,7 +1368,7 @@ def build_pdf():
     )
 
     # =========================
-    # 1. BIỂU ĐỒ DRAWDOWN (TO – ĐẨY CAO)
+    # 1. BIỂU ĐỒ DRAWDOWN
     # =========================
     elements.append(Spacer(1, 4))
 
@@ -1402,9 +1381,64 @@ def build_pdf():
     elements.append(drawdown_img)
 
     # =========================
-    # 2. COMMENTARY (GIỮA BIỂU ĐỒ & BẢNG)
+    # 2. BẢNG DRAWDOWN – TÁCH 2 BẢNG, ĐẶT PHÍA TRÊN (TRƯỚC NHẬN XÉT)
     # =========================
-    elements.append(Spacer(1, 6))
+    elements.append(Spacer(1, 12))  # Khoảng cách sau biểu đồ, tránh dính chữ
+
+    drawdown_data = load_table(FILES["drawdown"])
+    header = drawdown_data[0]
+    rows = drawdown_data[1:]
+    mid = (len(rows) + 1) // 2
+    left_rows = rows[:mid]
+    right_rows = rows[mid:]
+
+    sub_width = PAGE_W * 0.44
+    col_w = [sub_width * 0.22, sub_width * 0.22, sub_width * 0.28, sub_width * 0.28]
+
+    def styled_drawdown_table(data):
+        table = Table(data, colWidths=col_w, repeatRows=1)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), PV_BLUE_DARK),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTNAME", (0,0), (-1,0), FONT_NAME),
+            ("FONTSIZE", (0,0), (-1,0), 10),
+            ("FONTNAME", (0,1), (-1,-1), FONT_NAME),
+            ("FONTSIZE", (0,1), (-1,-1), 9),
+            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+            ("LEFTPADDING", (0,0), (-1,-1), 6),
+            ("RIGHTPADDING", (0,0), (-1,-1), 6),
+            ("TOPPADDING", (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("BOX", (0,0), (-1,-1), 1, PV_BLUE_GRID),
+            ("INNERGRID", (0,0), (-1,-1), 1, PV_BLUE_GRID),
+        ]))
+        for i in range(1, len(data)):
+            bg = colors.whitesmoke if i % 2 == 1 else PV_BLUE_LIGHT
+            table.setStyle(TableStyle([("BACKGROUND", (0,i), (-1,i), bg)]))
+        return table
+
+    left_table = styled_drawdown_table([header] + left_rows)
+    right_table = styled_drawdown_table([header] + right_rows)
+
+    bottom_table = Table(
+        [[left_table, right_table]],
+        colWidths=[PAGE_W * 0.44, PAGE_W * 0.44],
+        hAlign="CENTER"
+    )
+    bottom_table.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("LEFTPADDING", (0,0), (-1,-1), 0),
+        ("RIGHTPADDING", (0,0), (-1,-1), 0),
+        ("TOPPADDING", (0,0), (-1,-1), 2),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 2),
+    ]))
+
+    elements.append(KeepTogether([bottom_table]))
+
+    # =========================
+    # 3. NHẬN XÉT RỦI RO (ĐẶT DƯỚI BẢNG, XUỐNG DƯỚI XÍU TRÁNH DÍNH CHỮ)
+    # =========================
+    elements.append(Spacer(1, 14))
 
     risk_style = ParagraphStyle(
         "RiskText",
@@ -1419,58 +1453,6 @@ def build_pdf():
             colWidths=[PAGE_W * 0.90],
             rowHeights=[PAGE_H * 0.08]
         )
-    )
-
-    elements.append(Spacer(1, 4))
-
-    # =========================
-    # 3. BẢNG DRAWDOWN – MỘT BẢNG ĐẦY ĐỦ, colWidths CỐ ĐỊNH TRÁNH TRÀN/ĐÈ
-    # =========================
-    drawdown_data = load_table(FILES["drawdown"])
-    tbl_width = PAGE_W * 0.90
-    col_w = [tbl_width * 0.22, tbl_width * 0.22, tbl_width * 0.26, tbl_width * 0.30]  # 4 cột
-
-    def styled_drawdown_table(data):
-        table = Table(data, colWidths=col_w, repeatRows=1)
-        table.setStyle(TableStyle([
-            # Header
-            ("BACKGROUND", (0,0), (-1,0), PV_BLUE_DARK),
-            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-            ("FONTNAME", (0,0), (-1,0), FONT_NAME),
-            ("FONTSIZE", (0,0), (-1,0), 10),
-
-            # Body
-            ("FONTNAME", (0,1), (-1,-1), FONT_NAME),
-            ("FONTSIZE", (0,1), (-1,-1), 9),
-            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-
-            # Padding
-            ("LEFTPADDING", (0,0), (-1,-1), 6),
-            ("RIGHTPADDING", (0,0), (-1,-1), 6),
-            ("TOPPADDING", (0,0), (-1,-1), 5),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-
-            # Khung rõ ràng: BOX + INNERGRID
-            ("BOX", (0,0), (-1,-1), 1, PV_BLUE_GRID),
-            ("INNERGRID", (0,0), (-1,-1), 1, PV_BLUE_GRID),
-        ]))
-
-        # Zebra rows
-        for i in range(1, len(data)):
-            bg = colors.whitesmoke if i % 2 == 1 else PV_BLUE_LIGHT
-            table.setStyle(TableStyle([("BACKGROUND", (0,i), (-1,i), bg)]))
-
-        return table
-
-    drawdown_table = styled_drawdown_table(drawdown_data)
-
-    # Đẩy cụm bảng xuống sát đáy trang
-    elements.append(Spacer(1, PAGE_H * 0.03))
-
-    elements.append(
-        KeepTogether([
-            drawdown_table
-        ])
     )
 
 
