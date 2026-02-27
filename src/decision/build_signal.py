@@ -1,17 +1,4 @@
-# =====================================================
-# FILE: src/decision/build_signal.py
-# PURPOSE:
-#   Build cross-sectional allocation signal
-#   based on latent risk (NOT return prediction)
-#
-# PHILOSOPHY:
-#   - Signal = relative safety under market regime
-#   - Cross-sectional (same day, all assets)
-#   - Fast reaction to regime switch
-#
-# REFERENCES:
-#   Ma et al. (2020), Bertani (2021), Aithal et al. (2023)
-# =====================================================
+# build_signal.py - Cross-sectional allocation signal from latent risk (top-K selection only)
 
 import os
 import pandas as pd
@@ -23,9 +10,6 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "data_processed", "decision")
 DATA_CUTOFF = os.environ.get("DATA_CUTOFF_DATE")  # Walk-forward
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# =====================================================
-# LOAD ALL RISK FILES
-# =====================================================
 frames = []
 
 for file in os.listdir(INPUT_DIR):
@@ -45,21 +29,12 @@ for file in os.listdir(INPUT_DIR):
 
 risk_df = pd.concat(frames, ignore_index=True)
 
-# =====================================================
-# CORE IDEA:
-# Signal is CROSS-SECTIONAL, not per-asset normalized
-# =====================================================
-
 def compute_signal(group: pd.DataFrame) -> pd.DataFrame:
     """
     Compute signal for one date across all assets
     """
 
-    # 1 Cross-sectional normalization (KEY FIX)
     z = group["risk_z"]
-
-    # Lower risk_z → better signal
-    # Rank-based is more robust than min-max
     group["signal_raw"] = (-z).rank(method="average")
 
     # Normalize to [0, 1]
@@ -80,23 +55,13 @@ signal_df = (
     .sort_values(["date", "signal_raw"], ascending=[True, False])
 )
 
-# =====================================================
-# OPTIONAL: Mild temporal smoothing (NOT momentum)
-# =====================================================
-# Purpose: reduce day-to-day noise, NOT delay regime reaction
-
 signal_df["signal"] = (
     signal_df
     .groupby("symbol")["signal_raw"]
     .transform(lambda x: x.ewm(span=5, adjust=False).mean())
 )
 
-# Ensure non-negative
 signal_df["signal"] = signal_df["signal"].clip(lower=0)
-
-# =====================================================
-# FINAL EXPORT
-# =====================================================
 out = signal_df[["date", "symbol", "signal"]]
 
 out.to_csv(
@@ -105,5 +70,4 @@ out.to_csv(
     encoding="utf-8-sig"
 )
 
-print(" signal.csv created (cross-sectional, regime-aware)")
-print("   Philosophy: relative safety under latent market risk")
+print(" signal.csv created")

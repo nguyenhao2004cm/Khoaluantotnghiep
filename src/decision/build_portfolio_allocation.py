@@ -1,8 +1,4 @@
-"""
-Regime-Aware, User-Constrained Portfolio Allocation
-AI governs risk – User provides constraints
-Khi chạy từ web: đọc assets, start_date, end_date, risk_appetite từ web_run_config.json.
-"""
+# Regime-Aware ERC allocation. Web: reads web_run_config.json
 
 import os
 import sys
@@ -16,12 +12,9 @@ if str(PROJECT_DIR) not in sys.path:
 
 from src.utils.web_run_config import load_web_run_config
 
-# Walk-forward: chỉ xử lý dates <= cutoff
 DATA_CUTOFF = os.environ.get("DATA_CUTOFF_DATE")
-
-# =====================================================
-# CONFIG (USER-CONSTRAINED) – mặc định khi không có config web
-# =====================================================
+ALLOCATION_METHOD = os.environ.get("ALLOCATION_METHOD", "erc").lower().strip()
+REBALANCE_FREQ = os.environ.get("REBALANCE_FREQ", "monthly").lower().strip()
 
 USER_ASSETS = ["FPT", "VNM", "HPG", "TCB", "VIC"]
 RISK_PROFILE = "balanced"  # {"conservative", "balanced", "aggressive"}
@@ -42,10 +35,6 @@ TARGET_VOL = 0.15
 VOL_LOOKBACK = 20
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-# =====================================================
-# RISK PROFILE SCALING
-# =====================================================
 
 def apply_risk_profile(weights, profile):
     if profile == "conservative":
@@ -102,9 +91,6 @@ def allocate_aggressive(symbols, signals):
 
     return dict(zip([symbols[i] for i in idx], weights))
 
-# =====================================================
-# VOLATILITY TARGETING (khi regime HIGH)
-# =====================================================
 def _load_vol_series(symbols):
     """Load rolling vol series 1 lần, reuse."""
     if not PRICE_FILE.exists():
@@ -144,22 +130,59 @@ def get_volatility_scale(date, symbols, vol_series=None):
         return 1.0
 
 
-# =====================================================
-# LOAD PORTFOLIO REGIME
-# =====================================================
-
 def load_portfolio_regime():
     df = pd.read_csv(RISK_REGIME_FILE, parse_dates=["date"])
     return df.set_index("date")["portfolio_risk_regime"]
 
 PORTFOLIO_REGIME = load_portfolio_regime()
 
-# =====================================================
-# MAIN
-# =====================================================
+def _get_weights_for_date(symbols, signals, regime, risk_profile, date, vol_series):
+    """Return dict {symbol: weight}. method: erc | minvar | softmax."""
+    method = ALLOCATION_METHOD
+
+    if method == "erc":
+        from src.portfolio_engine.risk_based_optimizer import allocate_risk_based
+        weights = allocate_risk_based(
+            symbols, signals, regime, method="erc",
+            as_of_date=date, risk_profile=risk_profile
+        )
+        if regime == "HIGH":
+            vol_scale = get_volatility_scale(date, symbols, vol_series)
+            weights = {k: v * vol_scale for k, v in weights.items()}
+        return weights
+
+    elif method == "minvar":
+        from src.portfolio_engine.risk_based_optimizer import allocate_risk_based
+        weights = allocate_risk_based(
+            symbols, signals, regime, method="minvar",
+            as_of_date=date, risk_profile=risk_profile
+        )
+        if regime == "HIGH":
+            vol_scale = get_volatility_scale(date, symbols, vol_series)
+            weights = {k: v * vol_scale for k, v in weights.items()}
+        return weights
+
+    else:
+        # softmax: baseline only, NOT production
+        if regime == "HIGH":
+            weights = allocate_defensive(symbols, signals)
+            vol_scale = get_volatility_scale(date, symbols, vol_series)
+            weights = {k: v * vol_scale for k, v in weights.items()}
+            w = np.array(list(weights.values()))
+        elif regime == "LOW":
+            weights = allocate_aggressive(symbols, signals)
+            w = np.array(list(weights.values()))
+            w = apply_risk_profile(w, risk_profile)
+        else:
+            weights = allocate_balanced(symbols, signals)
+            w = np.array(list(weights.values()))
+            w = apply_risk_profile(w, risk_profile)
+        return dict(zip(weights.keys(), w))
+
 
 def main():
-    print("\n REGIME-AWARE PORTFOLIO ALLOCATION (FIXED)\n")
+    print(f"\n REGIME-AWARE PORTFOLIO ALLOCATION (method={ALLOCATION_METHOD})")
+    print(f" Production: ERC. Softmax = baseline only.\n")
 
     config = load_web_run_config()
     if config:
@@ -182,6 +205,7 @@ def main():
     vol_series = _load_vol_series(assets)
 
     records = []
+    last_weights_by_month = {}  # For monthly rebalance: (year, month) -> weights dict
 
     for date, g in df.groupby("date"):
         if date not in PORTFOLIO_REGIME.index:
@@ -195,24 +219,29 @@ def main():
 
         symbols = g["symbol"].tolist()
         signals = g["signal"].values
-
         regime = PORTFOLIO_REGIME.loc[date]
 
-        if regime == "HIGH":
-            weights = allocate_defensive(symbols, signals)
-            # Volatility targeting: scale exposure khi realized_vol cao
-            vol_scale = get_volatility_scale(date, symbols, vol_series)
-            weights = {k: v * vol_scale for k, v in weights.items()}
-            w = np.array(list(weights.values()))
-            # Không normalize khi HIGH (giữ tổng < 1 = cash buffer)
-        elif regime == "LOW":
-            weights = allocate_aggressive(symbols, signals)
-            w = np.array(list(weights.values()))
-            w = apply_risk_profile(w, risk_profile)
-        else:
-            weights = allocate_balanced(symbols, signals)
-            w = np.array(list(weights.values()))
-            w = apply_risk_profile(w, risk_profile)
+        # Monthly rebalance: only optimize on 1st trading day of month
+        if REBALANCE_FREQ == "monthly" and ALLOCATION_METHOD in ("erc", "minvar"):
+            month_key = (date.year, date.month)
+            prev_key = (date.year, date.month - 1) if date.month > 1 else (date.year - 1, 12)
+            if date.day > 1:
+                wdict = last_weights_by_month.get(month_key) or last_weights_by_month.get(prev_key)
+                if wdict:
+                    for sym, weight in wdict.items():
+                        records.append({
+                            "date": date,
+                            "symbol": sym,
+                            "allocation_weight": weight,
+                            "risk_regime": regime,
+                            "risk_profile": risk_profile
+                        })
+                    continue
+
+        weights = _get_weights_for_date(symbols, signals, regime, risk_profile, date, vol_series)
+        if REBALANCE_FREQ == "monthly" and ALLOCATION_METHOD in ("erc", "minvar"):
+            last_weights_by_month[(date.year, date.month)] = weights
+        w = np.array(list(weights.values()))
 
         for (sym, _), weight in zip(weights.items(), w):
             records.append({

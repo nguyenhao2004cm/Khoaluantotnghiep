@@ -1,21 +1,13 @@
-# =====================================================
-# FILE: src/reporting/build_portfolio_risk_regime.py
-# Module A – Market Risk Aggregation Engine
-# =====================================================
+# build_portfolio_risk_regime.py - Market risk aggregation, regime classification
 
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
-# =========================
-# PATHS & CONFIG
-# =========================
 import os
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
-
-# Walk-forward: chỉ dùng dữ liệu đến cutoff (tránh look-ahead)
-DATA_CUTOFF = os.environ.get("DATA_CUTOFF_DATE")  # e.g. "2019-12-31"
+DATA_CUTOFF = os.environ.get("DATA_CUTOFF_DATE")
 
 RISK_DIR = PROJECT_DIR / "data_processed" / "risk_normalized"
 OUT_DIR  = PROJECT_DIR / "data_processed" / "reporting"

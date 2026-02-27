@@ -1,7 +1,5 @@
+# rebalancing_strategy.py - Helper functions (apply_rebalancing_rules, add_stop_loss_logic)
 
-# =====================================================
-# FILE 3: src/portfolio_engine/rebalancing_strategy.py (NEW)
-# =====================================================
 import pandas as pd
 import numpy as np
 from pathlib import Path

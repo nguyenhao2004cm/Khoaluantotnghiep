@@ -1,6 +1,5 @@
-# =====================================================
-# FILE: src/portfolio_engine/mean_variance_optimizer.py (FIXED)
-# =====================================================
+# mean_variance_optimizer.py - MVO benchmark (standalone test)
+
 import pandas as pd
 import numpy as np
 from scipy.optimize import minimize

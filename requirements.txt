@@ -3,6 +3,7 @@ uvicorn
 pandas
 numpy
 scipy
+scikit-learn
 python-dotenv
 statsmodels
 openpyxl

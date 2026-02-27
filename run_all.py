@@ -1,21 +1,13 @@
+# run_all.py - Full pipeline
 
-
-# run_all.py – MASTER PIPELINE RUNNER (MERGED)
-# =====================================================
 import sys
 import subprocess
 from pathlib import Path
 
-# =====================================
-# CONFIG
-# =====================================
 PROJECT_DIR = Path(__file__).resolve().parent
-PYTHON = sys.executable   # Python của venv hiện tại
-sys.path.append(str(PROJECT_DIR))  # đảm bảo import được src
+PYTHON = sys.executable
+sys.path.append(str(PROJECT_DIR))  # import src
 
-# =====================================
-# HELPER FUNCTION
-# =====================================
 def run_step(script_path, step_name):
     print("\n" + "=" * 70)
     print(f" {step_name}")
@@ -40,9 +32,6 @@ def run_step(script_path, step_name):
 
     print(f" COMPLETED: {step_name}")
 
-# =====================================
-# MAIN PIPELINE
-# =====================================
 def main():
     print("\n" + "=" * 70)
     print(" PORTFOLIO OPTIMIZATION – FULL PIPELINE")
@@ -98,15 +87,7 @@ def main():
          "Build risk regime"),
 
         ("src/decision/build_portfolio_allocation.py",
-         "Build signal-based portfolio allocation (Softmax Top-K)"),
-
-        # Rebalancing & constraints
-        ("src/portfolio_engine/rebalancing_strategy.py",
-         "Apply portfolio rebalancing strategy"),
-
-        # Mean-Variance Optimizer (benchmark / hybrid)
-        ("src/portfolio_engine/mean_variance_optimizer.py",
-         "Run Mean-Variance Optimization (MVO)"),
+         "Build portfolio allocation (ERC - Regime-Aware Equal Risk Contribution)"),
 
         # =====================================================
         # STAGE 6 – PORTFOLIO SIMULATION

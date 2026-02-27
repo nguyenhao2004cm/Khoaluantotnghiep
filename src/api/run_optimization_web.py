@@ -36,9 +36,12 @@ def run_optimization_for_web(
         ("-m", "src.reporting.report_pdf"),
     ]
 
+    import os
+    env = dict(os.environ)
+    env.setdefault("ALLOCATION_METHOD", "erc")
     for args in steps:
         cmd = [sys.executable] + list(args)
-        r = subprocess.run(cmd, cwd=str(PROJECT_DIR), capture_output=True, text=True, timeout=300)
+        r = subprocess.run(cmd, cwd=str(PROJECT_DIR), env=env, capture_output=True, text=True, timeout=300)
         if r.returncode != 0:
             raise RuntimeError(f"Pipeline step failed: {' '.join(cmd)}\n{r.stderr or r.stdout}")
 
