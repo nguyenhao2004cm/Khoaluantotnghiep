@@ -80,15 +80,23 @@ def plot_correlation_heatmap(monthly_returns):
 def build_correlation_summary(monthly_returns):
     corr = monthly_returns.corr()
 
-    # Lấy tam giác trên, bỏ diagonal
+    # Lấy tam giác trên, bỏ diagonal (n=2: 1 giá trị; n=1: rỗng)
     mask = np.triu(np.ones(corr.shape), k=1).astype(bool)
     corr_vals = corr.where(mask).stack()
 
+    if corr_vals.empty:
+        return {
+            "mean_correlation": np.nan,
+            "min_correlation": np.nan,
+            "max_correlation": np.nan,
+            "low_corr_ratio": np.nan,
+        }
+
     summary = {
-        "mean_correlation": corr_vals.mean(),
-        "min_correlation": corr_vals.min(),
-        "max_correlation": corr_vals.max(),
-        "low_corr_ratio": (corr_vals.abs() < 0.3).mean(),
+        "mean_correlation": float(corr_vals.mean()),
+        "min_correlation": float(corr_vals.min()),
+        "max_correlation": float(corr_vals.max()),
+        "low_corr_ratio": float((corr_vals.abs() < 0.3).mean()),
     }
 
     return summary

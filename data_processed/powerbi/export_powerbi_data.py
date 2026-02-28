@@ -102,8 +102,10 @@ def export_portfolio_summary():
 # =====================================
 def export_asset_allocation_current():
     _, holdings = current_holdings()
-
-    out = holdings[["symbol", "allocation_weight"]]
+    out = holdings[["symbol", "allocation_weight"]].copy()
+    total = out["allocation_weight"].sum()
+    if total > 0:
+        out["allocation_weight"] = out["allocation_weight"] / total
 
     out.to_csv(
         OUT_DIR / "asset_allocation_current.csv",

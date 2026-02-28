@@ -213,9 +213,12 @@ def _plot_asset_allocation_chart():
     _ensure_matplotlib()
     from matplotlib.lines import Line2D
     df = pd.read_csv(DATA_POWERBI_DIR / "asset_allocation_current.csv")
-
-    # Sort theo tỷ trọng giảm dần
     df = df.sort_values("allocation_weight", ascending=False)
+    # Chuan hoa tong = 100%
+    total = df["allocation_weight"].sum()
+    if total > 0:
+        df = df.copy()
+        df["allocation_weight"] = df["allocation_weight"] / total
 
     plt.figure(figsize=(5.6, 5.6))
 
@@ -610,32 +613,37 @@ def styled_table(data, col_widths=None):
 
 
 def load_company_table_top8(page_width):
-    # ===== 1. Load TOP 8 allocation =====
-    alloc_df = pd.read_csv(
-        DATA_POWERBI_DIR / "asset_allocation_current.csv"
-    )
+    alloc_df = pd.read_csv(DATA_POWERBI_DIR / "asset_allocation_current.csv")
+    total = alloc_df["allocation_weight"].sum()
+    if total <= 0:
+        total = 1.0
+    alloc_df = alloc_df.copy()
+    alloc_df["allocation_pct"] = (alloc_df["allocation_weight"] / total) * 100
 
-    top_alloc = (
-        alloc_df
-        .sort_values("allocation_weight", ascending=False)
-        .head(8)
-        .copy()
-    )
+    top_alloc = alloc_df.sort_values("allocation_weight", ascending=False)
+    has_others = len(top_alloc) > 8
+    top_alloc = top_alloc.head(8)
+    if has_others:
+        others_pct = 100 - top_alloc["allocation_pct"].sum()
+        if others_pct > 0.01:
+            top_alloc = pd.concat([top_alloc, pd.DataFrame([{
+                "symbol": "Khác", "allocation_weight": 0, "allocation_pct": others_pct
+            }])], ignore_index=True)
 
-    top_alloc["allocation_pct"] = top_alloc["allocation_weight"] * 100
-
-    # ===== 2. Load company info =====
     company_path = PROJECT_DIR / "data_raw" / "company.xlsx"
     if not company_path.exists():
-        merged = pd.DataFrame(columns=["Tên đầy đủ", "Mã chứng khoán", "allocation_pct"])
+        merged = top_alloc.copy()
+        merged["Tên đầy đủ"] = merged["symbol"]
     else:
         company_df = pd.read_excel(company_path)
-        merged = company_df.merge(
-            top_alloc[["symbol", "allocation_pct"]],
-            left_on="Mã chứng khoán",
-            right_on="symbol",
-            how="inner"
-        ).sort_values("allocation_pct", ascending=False)
+        merged = top_alloc.merge(
+            company_df[["Mã chứng khoán", "Tên đầy đủ"]],
+            left_on="symbol",
+            right_on="Mã chứng khoán",
+            how="left"
+        )
+        merged["Tên đầy đủ"] = merged["Tên đầy đủ"].fillna(merged["symbol"])
+    merged = merged.sort_values("allocation_pct", ascending=False)
 
     # ===== 3. PARAGRAPH STYLE (QUAN TRỌNG NHẤT) =====
     name_style = ParagraphStyle(
@@ -677,9 +685,10 @@ def load_company_table_top8(page_width):
     ]
 
     for _, r in merged.iterrows():
+        code = r.get("Mã chứng khoán") or r.get("symbol", "")
         data.append([
-            Paragraph(r["Tên đầy đủ"], name_style),   #  AUTO XUỐNG DÒNG
-            r["Mã chứng khoán"],
+            Paragraph(str(r["Tên đầy đủ"]), name_style),
+            str(code),
             f"{r['allocation_pct']:.2f}%",
         ])
 

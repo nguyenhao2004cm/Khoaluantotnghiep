@@ -16,7 +16,8 @@ DATA_CUTOFF = os.environ.get("DATA_CUTOFF_DATE")
 ALLOCATION_METHOD = os.environ.get("ALLOCATION_METHOD", "erc").lower().strip()
 REBALANCE_FREQ = os.environ.get("REBALANCE_FREQ", "monthly").lower().strip()
 
-USER_ASSETS = ["FPT", "VNM", "HPG", "TCB", "VIC"]
+# Khi khong co web config: dung toan thi truong (tat ca symbol trong signal)
+# Web config: chi gioi han assets khi user chon
 RISK_PROFILE = "balanced"  # {"conservative", "balanced", "aggressive"}
 
 TOP_K = 8
@@ -184,21 +185,21 @@ def main():
     print(f"\n REGIME-AWARE PORTFOLIO ALLOCATION (method={ALLOCATION_METHOD})")
     print(f" Production: ERC. Softmax = baseline only.\n")
 
+    df = pd.read_csv(SIGNAL_FILE, parse_dates=["date"])
     config = load_web_run_config()
-    if config:
-        assets = [s.strip().upper() for s in config.get("assets", [])]
+    if config and config.get("assets"):
+        assets = [s.strip().upper() for s in config["assets"]]
         risk_profile = config.get("risk_appetite", RISK_PROFILE)
         start_date = pd.to_datetime(config["start_date"]) if config.get("start_date") else None
         end_date = pd.to_datetime(config["end_date"]) if config.get("end_date") else None
     else:
-        assets = USER_ASSETS
+        assets = df["symbol"].unique().tolist()
         risk_profile = RISK_PROFILE
         start_date = None
         end_date = None
+    if not assets:
+        assets = df["symbol"].unique().tolist()
 
-    df = pd.read_csv(SIGNAL_FILE, parse_dates=["date"])
-
-    #  USER CONSTRAINT
     df = df[df["symbol"].isin(assets)]
 
     # Preload vol series cho volatility targeting (1 lần)

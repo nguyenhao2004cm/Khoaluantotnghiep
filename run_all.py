@@ -39,31 +39,31 @@ def main():
 
     steps = [
 
-        #=====================================================
-        # STAGE 0 – PRICE DATA
-        # =====================================================
-        ("src/data/prepare_prices.py",
-         "Prepare price panel from raw data"),
+        # #=====================================================
+        # # STAGE 0 – PRICE DATA
+        # # =====================================================
+        # ("src/data/prepare_prices.py",
+        #  "Prepare price panel from raw data"),
 
 
-        # =====================================================
-        # STAGE 1 – FEATURE ENGINEERING
-        # =====================================================
-        ("src/features/build_features.py",
-         "Build technical & market features"),
-        ("src/features/build_risk_features.py",
-         "Build technical & market risk features"),
-        #=====================================================
-        # STAGE 2 – LATENT REPRESENTATION
-        # =====================================================
-        ("src/models/train_autoencoder.py",
-         "Train market autoencoder"),
+        # # =====================================================
+        # # STAGE 1 – FEATURE ENGINEERING
+        # # =====================================================
+        # ("src/features/build_features.py",
+        #  "Build technical & market features"),
+        # ("src/features/build_risk_features.py",
+        #  "Build technical & market risk features"),
+        # #=====================================================
+        # # STAGE 2 – LATENT REPRESENTATION
+        # # =====================================================
+        # ("src/models/train_autoencoder.py",
+        #  "Train market autoencoder"),
 
-        ("-m src.models.encode_latent",
-         "Encode latent features"),
+        # ("-m src.models.encode_latent",
+        #  "Encode latent features"),
 
-        ("src/models/train_lstm_latent.py",
-         "Train LSTM on latent (for risk prediction)"),
+        # ("src/models/train_lstm_latent.py",
+        #  "Train LSTM on latent (for risk prediction)"),
 
         # =====================================================
         # STAGE 3 – RISK ESTIMATION
@@ -110,12 +110,6 @@ def main():
         ("src/reporting/compute_drawdown_periods.py",
          "Build drawdown periods table"),
 
-        ("src/portfolio_engine/asset_risk_return.py",
-         "Build asset risk-return dataset"),
-
-        ("src/portfolio_engine/efficient_frontier.py",
-         "Build efficient frontier"),
-
         ("src/portfolio_engine/correlation_matrix.py",
          "Build correlation matrix & AI summary"),
 
@@ -123,16 +117,11 @@ def main():
         # STAGE 8 – EXPORT FOR DASHBOARD
         # =====================================================
         ("data_processed/powerbi/export_powerbi_data.py",
-         "Export datasets for Power BI"),
+         "Export datasets"),
+
 
         # =====================================================
-        # STAGE 9 – BACKTEST (multi-year, benchmark, crisis)
-        # =====================================================
-        ("-m src.backtest.run_all_backtest",
-         "Run backtest: multi-year, benchmark comparison, allocation charts, crisis stress test"),
-
-        # =====================================================
-        # STAGE 10 – AUTO PDF REPORT
+        # STAGE 9 – AUTO PDF REPORT
         # =====================================================
         ("-m src.reporting.report_pdf",
          "Generate PDF portfolio report with AI commentary"),

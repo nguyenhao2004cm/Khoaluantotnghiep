@@ -67,6 +67,23 @@ def get_covariance_matrix(returns, use_ledoit_wolf=True):
 
 
 # =====================================
+# BOUNDS HELPER (danh mục 2–3 cổ phiếu)
+# =====================================
+def _feasible_bounds(n, min_w, max_w):
+    """
+    Với n nhỏ (2–3), min_w/max_w mặc định có thể không khả thi (sum=1).
+    VD: n=2, min_w=0.05, max_w=0.25 → không thể có w1+w2=1.
+    """
+    if n <= 1:
+        return min_w, max_w
+    # Cần 1/n nằm trong [min_w, max_w] để equal-weight khả thi
+    lo = 1.0 / n
+    min_ok = min(min_w, lo * 0.5)   # cho phép ít nhất 50% equal-weight
+    max_ok = max(max_w, lo * 1.5)   # cho phép nhiều nhất 1.5x equal-weight
+    return min_ok, max_ok
+
+
+# =====================================
 # MINIMUM VARIANCE PORTFOLIO
 # =====================================
 def min_variance_weights(cov, min_w=0.0, max_w=1.0):
@@ -74,7 +91,8 @@ def min_variance_weights(cov, min_w=0.0, max_w=1.0):
     min w' Σ w  s.t. sum(w)=1, min_w <= w <= max_w
     """
     n = cov.shape[0]
-    bounds = [(min_w, max_w)] * n
+    min_eff, max_eff = _feasible_bounds(n, min_w, max_w)
+    bounds = [(min_eff, max_eff)] * n
 
     def obj(w):
         return w @ cov @ w
@@ -111,7 +129,7 @@ def erc_weights(cov, min_w=0.0, max_w=1.0, tol=1e-6, max_iter=200):
     n>2: iterative optimization
     """
     n = cov.shape[0]
-    # Closed form cho 2 assets (khong clip de tranh ep 50-50)
+    # Closed form cho 2 assets: w1 = sigma2/(sigma1+sigma2) — risk parity chính xác
     if n == 2:
         sig1 = np.sqrt(cov[0, 0])
         sig2 = np.sqrt(cov[1, 1])
@@ -119,10 +137,12 @@ def erc_weights(cov, min_w=0.0, max_w=1.0, tol=1e-6, max_iter=200):
             w1 = sig2 / (sig1 + sig2)
             w2 = 1 - w1
             w = np.array([w1, w2])
-            w = np.clip(w, 0.01, 0.99)  # Tranh 0, chi gioi han nhe
+            w = np.clip(w, 0.01, 0.99)  # tránh 0, giới hạn nhẹ
             w /= w.sum()
             return w
-    bounds = [(min_w, max_w)] * n
+    # n>=3: cần bounds khả thi (n=3 với min_w=0.05, max_w=0.25 không feasible)
+    min_eff, max_eff = _feasible_bounds(n, min_w, max_w)
+    bounds = [(min_eff, max_eff)] * n
 
     def obj(w):
         rc = _risk_contributions(w, cov)
