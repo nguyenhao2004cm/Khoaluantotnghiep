@@ -18,11 +18,14 @@ except ImportError:
 
 PRICE_FILE = PROJECT_DIR / "data_processed/prices/prices.csv"
 ROLLING_WINDOW = 60
+ROLLING_WINDOW_EXTENDED = 120  # Khi ít mã (user chọn), dùng lookback dài hơn
 TRADING_DAYS = 252
 
 
-def load_returns(symbols, as_of_date=None, lookback=ROLLING_WINDOW):
+def load_returns(symbols, as_of_date=None, lookback=None):
     """Load returns matrix: index=date, columns=symbols."""
+    if lookback is None:
+        lookback = ROLLING_WINDOW_EXTENDED if len(symbols) <= 8 else ROLLING_WINDOW
     df = pd.read_csv(PRICE_FILE)
     df["symbol"] = df["symbol"].str.strip().str.upper()
     df["date"] = pd.to_datetime(df["date"])

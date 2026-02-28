@@ -265,6 +265,22 @@ def main():
                     continue
 
         weights = _get_weights_for_date(symbols, signals, regime, risk_profile, date, vol_series)
+
+        # Web config: optimizer có thể trả về ít hơn assets (mã thiếu dữ liệu giá trong lookback)
+        # → Thêm missing với phân bổ đều, renormalize
+        if config and config.get("assets") and len(weights) < len(assets):
+            missing = [s for s in assets if s not in weights]
+            if missing:
+                n = len(assets)
+                computed_sum = sum(weights.values())
+                missing_sum = len(missing) / n
+                scale = (1 - missing_sum) / computed_sum if computed_sum > 1e-9 else 0
+                weights = {k: v * scale for k, v in weights.items()}
+                for s in missing:
+                    weights[s] = 1.0 / n
+                total = sum(weights.values())
+                weights = {k: v / total for k, v in weights.items()}
+
         if REBALANCE_FREQ == "monthly" and ALLOCATION_METHOD in ("erc", "minvar"):
             last_weights_by_month[(date.year, date.month)] = weights
         w = np.array(list(weights.values()))

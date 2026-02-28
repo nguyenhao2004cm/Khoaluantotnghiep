@@ -2,10 +2,12 @@
   "assets": [
     "VNM",
     "FPT",
-    "SRC"
+    "CTD",
+    "ACB",
+    "GEX"
   ],
   "start_date": "2020-02-28",
-  "end_date": "2026-02-28",
+  "end_date": "2026-03-01",
   "risk_appetite": "balanced",
   "initial_capital": 10000
 }
