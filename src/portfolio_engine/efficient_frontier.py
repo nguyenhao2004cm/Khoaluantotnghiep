@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 from pathlib import Path
+from typing import Optional
 
 # =====================================================
 # CONFIG
@@ -123,6 +124,7 @@ def plot_efficient_frontier_reference(
     portfolio_weights: dict[str, float],
     lookback_days: int = 252,
     risk_free_rate: float = 0.03,
+    out_path: Optional[Path] = None,
 ):
     """
     Plot Efficient Frontier with AI-driven portfolio position.
@@ -130,6 +132,8 @@ def plot_efficient_frontier_reference(
     NOTE:
     -----
     This plot is for interpretation and reporting only.
+
+    out_path: Nếu có, lưu vào đây (để PDF tìm được). Mặc định: Reports/efficient_frontier_reference.png
     """
 
     # ---------- Frontier ----------
@@ -211,11 +215,9 @@ def plot_efficient_frontier_reference(
 
     plt.tight_layout()
 
-    out_path = OUT_DIR / "efficient_frontier_reference.png"
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    save_path = out_path if out_path is not None else OUT_DIR / "efficient_frontier_reference.png"
+    plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
-
-    # print(f" Efficient Frontier (reference) saved to: {out_path}")
 
     return {
         "portfolio_return": port_ret,

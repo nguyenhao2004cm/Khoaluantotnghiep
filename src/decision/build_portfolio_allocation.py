@@ -205,6 +205,13 @@ def main():
     # Preload vol series cho volatility targeting (1 lần)
     vol_series = _load_vol_series(assets)
 
+    # Web config: build signal lookup với forward-fill (mã thiếu signal dùng ngày gần nhất)
+    signal_lookup = None
+    if config and config.get("assets"):
+        df_sig = df.pivot(index="date", columns="symbol", values="signal").reindex(columns=assets)
+        df_sig = df_sig.sort_index().ffill().bfill().fillna(0)  # forward-fill, backfill, còn NaN→0
+        signal_lookup = df_sig
+
     records = []
     last_weights_by_month = {}  # For monthly rebalance: (year, month) -> weights dict
 
@@ -218,8 +225,26 @@ def main():
         if DATA_CUTOFF is not None and date > pd.to_datetime(DATA_CUTOFF):
             continue
 
-        symbols = g["symbol"].tolist()
-        signals = g["signal"].values
+        # Web config: đảm bảo TẤT CẢ assets user chọn có trong mỗi ngày
+        # Mã thiếu signal dùng signal ngày gần nhất (forward-fill)
+        if config and config.get("assets") and signal_lookup is not None:
+            symbols = list(assets)
+            row = signal_lookup.loc[date] if date in signal_lookup.index else signal_lookup.iloc[-1]
+            signals = np.array([float(row[s]) if s in row.index and pd.notna(row[s]) else 0.0 for s in symbols])
+        elif config and config.get("assets"):
+            symbols_in_date = g["symbol"].tolist()
+            symbols = list(assets)
+            signals_list = []
+            for sym in symbols:
+                if sym in symbols_in_date:
+                    sig = g.loc[g["symbol"] == sym, "signal"].iloc[0]
+                    signals_list.append(float(sig))
+                else:
+                    signals_list.append(0.0)
+            signals = np.array(signals_list)
+        else:
+            symbols = g["symbol"].tolist()
+            signals = g["signal"].values
         regime = PORTFOLIO_REGIME.loc[date]
 
         # Monthly rebalance: only optimize on 1st trading day of month

@@ -59,8 +59,8 @@ def main():
         # ("src/models/train_autoencoder.py",
         #  "Train market autoencoder"),
 
-        # ("-m src.models.encode_latent",
-        #  "Encode latent features"),
+        ("-m src.models.encode_latent",
+         "Encode latent features"),
 
         # ("src/models/train_lstm_latent.py",
         #  "Train LSTM on latent (for risk prediction)"),

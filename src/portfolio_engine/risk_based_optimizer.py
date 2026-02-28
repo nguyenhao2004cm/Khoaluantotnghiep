@@ -33,7 +33,11 @@ def load_returns(symbols, as_of_date=None, lookback=ROLLING_WINDOW):
     prices = df.pivot(index="date", columns="symbol", values="close").sort_index()
 
     ret = prices.pct_change(fill_method=None).dropna(how="all")
-    ret = ret[list(symbols)]
+    # Chỉ giữ symbols có dữ liệu (tránh KeyError khi 1 mã thiếu giá)
+    avail = [c for c in symbols if c in ret.columns]
+    if len(avail) < 2:
+        return None, None
+    ret = ret[avail]
 
     if as_of_date is not None:
         as_of_date = pd.Timestamp(as_of_date)
@@ -166,6 +170,9 @@ def erc_weights(cov, min_w=0.0, max_w=1.0, tol=1e-6, max_iter=200):
 # =====================================
 # TOP-K SELECTION + OPTIMIZATION
 # =====================================
+SIGNAL_BLEND = 0.5  # Trộn ERC với signal: 0=pure ERC (dễ đều), 0.5=cân bằng, 1=pure signal
+
+
 def optimize_allocation(
     symbols,
     signals,
@@ -174,30 +181,47 @@ def optimize_allocation(
     top_k=8,
     min_weight=0.05,
     max_weight=0.25,
+    signal_blend=SIGNAL_BLEND,
 ):
     """
-    Chọn top-K theo signal, sau đó tối ưu weight theo risk structure.
-
-    method: "erc" | "minvar"
+    Chọn top-K theo signal, tối ưu weight theo risk structure, rồi blend với signal.
+    Tránh phân bổ đều không hợp lý: signal cao → weight cao hơn.
     """
     # Chọn top-K theo signal
     idx = np.argsort(signals)[::-1][:top_k]
     selected = [symbols[i] for i in idx]
+    signals_selected = signals[idx]
 
     ret, _ = load_returns(selected, as_of_date)
     if ret is None or len(ret) < 30:
-        # Fallback: equal weight
-        n = len(selected)
-        return dict(zip(selected, np.ones(n) / n))
+        # Fallback: signal-proportional (không equal weight)
+        exp_s = np.exp(np.clip(signals_selected, -5, 5))
+        w = exp_s / exp_s.sum()
+        return dict(zip(selected, w))
+    # Thứ tự phải khớp ret.columns (cov matrix)
+    avail = [s for s in selected if s in ret.columns]
+    if len(avail) < 2:
+        n = len(avail)
+        return dict(zip(avail, np.ones(n) / n))
+    avail = list(ret.columns)  # Đảm bảo khớp cov
+    signals_avail = np.array([signals[symbols.index(s)] for s in avail])
 
     cov = get_covariance_matrix(ret)
 
     if method == "minvar":
-        w = min_variance_weights(cov, min_w=min_weight, max_w=max_weight)
+        w_risk = min_variance_weights(cov, min_w=min_weight, max_w=max_weight)
     else:
-        w = erc_weights(cov, min_w=min_weight, max_w=max_weight)
+        w_risk = erc_weights(cov, min_w=min_weight, max_w=max_weight)
 
-    return dict(zip(selected, w))
+    # Blend với signal: tránh phân bổ đều, signal cao → weight cao
+    exp_s = np.exp(np.clip(signals_avail, -5, 5))
+    w_signal = exp_s / exp_s.sum()
+    alpha = max(0.0, min(1.0, signal_blend))
+    w = (1 - alpha) * w_risk + alpha * w_signal
+    w = np.clip(w, 0.01, 0.99)
+    w /= w.sum()
+
+    return dict(zip(avail, w))
 
 
 # =====================================

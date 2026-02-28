@@ -391,15 +391,28 @@ from src.portfolio_engine.efficient_frontier import (
     plot_efficient_frontier_reference
 )
 
-# Lấy weights hiện tại (1 ngày, hoặc ngày cuối)
-weights = (
-    pd.read_csv("data_processed/portfolio/portfolio_allocation_final.csv")
-      .groupby("symbol")["allocation_weight"]
-      .last()
-      .to_dict()
-)
+# Lấy weights và symbols: ưu tiên danh mục user chọn (web config)
+def _get_report_symbols_and_weights():
+    try:
+        from src.utils.web_run_config import load_web_run_config
+        cfg = load_web_run_config()
+        if cfg and cfg.get("assets"):
+            symbols = [s.strip().upper() for s in cfg["assets"]]
+            alloc = pd.read_csv(PROJECT_DIR / "data_processed/portfolio/portfolio_allocation_final.csv", parse_dates=["date"])
+            weights = alloc.groupby("symbol")["allocation_weight"].last().to_dict()
+            # Đảm bảo tất cả symbols đều có weight (0 nếu thiếu)
+            weights = {s: weights.get(s, 0.0) for s in symbols}
+            total = sum(weights.values())
+            if total > 0:
+                weights = {s: w / total for s, w in weights.items()}
+            return symbols, weights
+    except Exception:
+        pass
+    alloc = pd.read_csv(PROJECT_DIR / "data_processed/portfolio/portfolio_allocation_final.csv", parse_dates=["date"])
+    weights = alloc.groupby("symbol")["allocation_weight"].last().to_dict()
+    return list(weights.keys()), weights
 
-symbols = list(weights.keys())
+symbols, weights = _get_report_symbols_and_weights()
 
 
 
@@ -1067,10 +1080,13 @@ def build_pdf():
     plot_drawdown()
     plot_annual_returns()
     plot_risk_return()
+    # Lấy symbols/weights mới nhất (web config) ngay trước khi vẽ
+    _symbols, _weights = _get_report_symbols_and_weights()
     plot_efficient_frontier_reference(
-        symbols=symbols,
-        portfolio_weights=weights,
-        lookback_days=252
+        symbols=_symbols,
+        portfolio_weights=_weights,
+        lookback_days=252,
+        out_path=IMG_DIR / "efficient_frontier.png",
     )
 
     plot_risk_return_metrics()
@@ -1088,8 +1104,9 @@ def build_pdf():
 
 
 
+    temp_pdf = OUT_DIR / "Portfolio_Optimization_Report_temp.pdf"
     doc = SimpleDocTemplate(
-        str(OUT_PDF),
+        str(temp_pdf),
         pagesize=landscape(A4),
         leftMargin=36,
         rightMargin=36,
@@ -1531,7 +1548,21 @@ def build_pdf():
     elements.append(Paragraph(commentary["recommendation"], styles["Normal"]))
 
     doc.build(elements)
-    print(" PDF REPORT GENERATED:", OUT_PDF)
+
+    # Copy từ temp sang file chính; nếu bị khóa (đang mở) thì lưu _new.pdf
+    import shutil
+    if temp_pdf.exists():
+        try:
+            shutil.copy(temp_pdf, OUT_PDF)
+            temp_pdf.unlink(missing_ok=True)
+            print(" PDF REPORT GENERATED:", OUT_PDF)
+        except PermissionError:
+            fallback = OUT_DIR / f"Portfolio_Optimization_Report_{REPORT_DATE}_new.pdf"
+            shutil.copy(temp_pdf, fallback)
+            temp_pdf.unlink(missing_ok=True)
+            print(f" Không ghi được {OUT_PDF} (file đang mở). Đã lưu: {fallback}")
+    else:
+        print(" PDF REPORT GENERATED:", OUT_PDF)
 
 
 if __name__ == "__main__":

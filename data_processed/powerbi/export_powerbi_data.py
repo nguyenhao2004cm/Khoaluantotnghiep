@@ -159,8 +159,18 @@ def export_annual_returns():
 # EXPORT ASSET RISK–RETURN
 # =====================================
 def export_asset_risk_return():
-    _, holdings = current_holdings()
-    symbols = holdings["symbol"].tolist()
+    # Ưu tiên danh mục user chọn (web config) thay vì holdings
+    try:
+        from src.utils.web_run_config import load_web_run_config
+        cfg = load_web_run_config()
+        if cfg and cfg.get("assets"):
+            symbols = [s.strip().upper() for s in cfg["assets"]]
+        else:
+            _, holdings = current_holdings()
+            symbols = holdings["symbol"].tolist()
+    except Exception:
+        _, holdings = current_holdings()
+        symbols = holdings["symbol"].tolist()
 
     asset_returns = load_asset_returns(symbols)
     stats = compute_asset_stats(asset_returns)
@@ -180,8 +190,18 @@ def export_asset_risk_return():
 # EXPORT EFFICIENT FRONTIER
 # =====================================
 def export_efficient_frontier():
-    _, holdings = current_holdings()
-    symbols = holdings["symbol"].tolist()
+    # Ưu tiên danh mục user chọn (web config) thay vì holdings
+    try:
+        from src.utils.web_run_config import load_web_run_config
+        cfg = load_web_run_config()
+        if cfg and cfg.get("assets"):
+            symbols = [s.strip().upper() for s in cfg["assets"]]
+        else:
+            _, holdings = current_holdings()
+            symbols = holdings["symbol"].tolist()
+    except Exception:
+        _, holdings = current_holdings()
+        symbols = holdings["symbol"].tolist()
 
     asset_returns = load_asset_returns(symbols)
 
