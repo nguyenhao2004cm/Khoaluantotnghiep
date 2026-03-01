@@ -1,4 +1,5 @@
-# risk_based_optimizer.py - ERC, MinVar, Ledoit-Wolf cov 60d
+# risk_based_optimizer.py - ERC, MinVar, Ledoit-Wolf
+# Regime-specific covariance: Σ_LOW ≠ Σ_HIGH
 
 import sys
 from pathlib import Path
@@ -17,9 +18,26 @@ except ImportError:
     LedoitWolf = None
 
 PRICE_FILE = PROJECT_DIR / "data_processed/prices/prices.csv"
+REGIME_FILE = PROJECT_DIR / "data_processed/reporting/risk_regime_timeseries.csv"
 ROLLING_WINDOW = 60
-ROLLING_WINDOW_EXTENDED = 120  # Khi ít mã (user chọn), dùng lookback dài hơn
+ROLLING_WINDOW_EXTENDED = 120
+MIN_OBS_REGIME = 30  # Tối thiểu quan sát cho covariance theo regime
 TRADING_DAYS = 252
+
+_REGIME_CACHE = None
+
+
+def _load_regime_series():
+    """Load portfolio_risk_regime (LOW/NORMAL/HIGH) theo ngày."""
+    global _REGIME_CACHE
+    if _REGIME_CACHE is not None:
+        return _REGIME_CACHE
+    if not REGIME_FILE.exists():
+        _REGIME_CACHE = pd.Series(dtype=str)
+        return _REGIME_CACHE
+    df = pd.read_csv(REGIME_FILE, parse_dates=["date"])
+    _REGIME_CACHE = df.set_index("date")["portfolio_risk_regime"].str.upper()
+    return _REGIME_CACHE
 
 
 def load_returns(symbols, as_of_date=None, lookback=None):
@@ -49,6 +67,55 @@ def load_returns(symbols, as_of_date=None, lookback=None):
     if len(ret) < 30:
         return None, None
     return ret, ret.index
+
+
+def load_returns_by_regime(symbols, as_of_date, regime, lookback=None):
+    """
+    Load returns CHỈ từ các ngày thuộc regime (LOW/HIGH/NORMAL).
+    Σ_regime = Cov(R_regime) — cấu trúc rủi ro theo regime.
+    """
+    if lookback is None:
+        lookback = ROLLING_WINDOW_EXTENDED if len(symbols) <= 8 else ROLLING_WINDOW
+
+    ret, _ = load_returns(symbols, as_of_date=None, lookback=252 * 3)  # Lấy 3 năm
+    if ret is None or len(ret) < MIN_OBS_REGIME:
+        return load_returns(symbols, as_of_date, lookback)[0]
+
+    regime_series = _load_regime_series()
+    if regime_series.empty:
+        ret = ret[ret.index <= pd.Timestamp(as_of_date)].tail(lookback)
+        return ret if len(ret) >= MIN_OBS_REGIME else None
+
+    as_of_date = pd.Timestamp(as_of_date)
+    ret = ret[ret.index <= as_of_date]
+    common = ret.index.intersection(regime_series.index)
+    if len(common) == 0:
+        return ret.tail(lookback) if len(ret) >= MIN_OBS_REGIME else None
+
+    mask = regime_series.reindex(common).fillna("NORMAL") == regime
+    regime_dates = common[mask]
+    ret_regime = ret.loc[ret.index.isin(regime_dates)].sort_index().tail(lookback)
+
+    if len(ret_regime) < MIN_OBS_REGIME:
+        # HIGH/LOW ít quan sát: dùng expanding (tất cả ngày regime có)
+        ret_regime = ret.loc[ret.index.isin(regime_dates)].sort_index()
+        if len(ret_regime) < 20:
+            return load_returns(symbols, as_of_date, lookback)[0]  # Fallback full sample
+    return ret_regime if len(ret_regime) >= MIN_OBS_REGIME else None
+
+
+def _log_regime_diagnostics(cov, returns, regime, symbols):
+    """Log phân hóa Σ theo regime (REGIME_COV_DEBUG=1)."""
+    try:
+        n = cov.shape[0]
+        corr = np.corrcoef(returns.values.T) if len(returns) > 1 else np.eye(n)
+        avg_corr = (corr.sum() - n) / (n * (n - 1)) if n > 1 else 0
+        eigvals = np.linalg.eigvalsh(cov)
+        eig_disp = np.std(eigvals) / (np.mean(eigvals) + 1e-12)
+        vol = np.sqrt(np.diag(cov))
+        print(f"  [REGIME={regime}] avg_corr={avg_corr:.4f} eig_disp={eig_disp:.4f} vol_mean={vol.mean():.4f}")
+    except Exception:
+        pass
 
 
 def get_covariance_matrix(returns, use_ledoit_wolf=True):
@@ -185,17 +252,22 @@ def optimize_allocation(
     min_weight=0.05,
     max_weight=0.25,
     signal_blend=SIGNAL_BLEND,
+    regime=None,
 ):
     """
-    Chọn top-K theo signal, tối ưu weight theo risk structure, rồi blend với signal.
-    Tránh phân bổ đều không hợp lý: signal cao → weight cao hơn.
+    Chọn top-K theo signal, tối ưu weight theo risk structure.
+    regime: LOW/HIGH/NORMAL — dùng Σ_regime (covariance theo regime).
     """
     # Chọn top-K theo signal
     idx = np.argsort(signals)[::-1][:top_k]
     selected = [symbols[i] for i in idx]
     signals_selected = signals[idx]
 
-    ret, _ = load_returns(selected, as_of_date)
+    # Regime-specific covariance: Σ_LOW ≠ Σ_HIGH
+    if regime and as_of_date and regime in ("LOW", "HIGH", "NORMAL"):
+        ret = load_returns_by_regime(selected, as_of_date, regime)
+    else:
+        ret, _ = load_returns(selected, as_of_date)
     if ret is None or len(ret) < 30:
         # Fallback: signal-proportional (không equal weight)
         exp_s = np.exp(np.clip(signals_selected, -5, 5))
@@ -210,6 +282,10 @@ def optimize_allocation(
     signals_avail = np.array([signals[symbols.index(s)] for s in avail])
 
     cov = get_covariance_matrix(ret)
+
+    # Regime diagnostics (bật với REGIME_COV_DEBUG=1)
+    if regime and __import__("os").environ.get("REGIME_COV_DEBUG") == "1":
+        _log_regime_diagnostics(cov, ret, regime, avail)
 
     if method == "minvar":
         w_risk = min_variance_weights(cov, min_w=min_weight, max_w=max_weight)
@@ -260,6 +336,7 @@ def allocate_risk_based(
     weights = optimize_allocation(
         symbols, signals, method=method, as_of_date=as_of_date,
         top_k=top_k, min_weight=min_w, max_weight=max_w,
+        regime=regime,
     )
 
     w_arr = np.array(list(weights.values()))
