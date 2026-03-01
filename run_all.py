@@ -53,17 +53,17 @@ def main():
         #  "Build technical & market features"),
         # ("src/features/build_risk_features.py",
         #  "Build technical & market risk features"),
-        # #=====================================================
-        # # STAGE 2 – LATENT REPRESENTATION
-        # # =====================================================
-        # ("src/models/train_autoencoder.py",
-        #  "Train market autoencoder"),
+        # =====================================================
+        # STAGE 2 – LATENT REPRESENTATION
+        # =====================================================
+        ("src/models/train_autoencoder.py",
+         "Train market autoencoder"),
 
         ("-m src.models.encode_latent",
          "Encode latent features"),
 
-        # ("src/models/train_lstm_latent.py",
-        #  "Train LSTM on latent (for risk prediction)"),
+        ("src/models/train_lstm_latent.py",
+         "Train LSTM on latent (for risk prediction)"),
 
         # =====================================================
         # STAGE 3 – RISK ESTIMATION

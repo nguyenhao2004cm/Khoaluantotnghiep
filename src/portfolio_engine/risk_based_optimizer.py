@@ -19,8 +19,8 @@ except ImportError:
 
 PRICE_FILE = PROJECT_DIR / "data_processed/prices/prices.csv"
 REGIME_FILE = PROJECT_DIR / "data_processed/reporting/risk_regime_timeseries.csv"
-ROLLING_WINDOW = 60
-ROLLING_WINDOW_EXTENDED = 120
+ROLLING_WINDOW = 120  # 60 quá ngắn → covariance unstable → shrinkage mạnh → gần equal
+ROLLING_WINDOW_EXTENDED = 180
 MIN_OBS_REGIME = 30  # Tối thiểu quan sát cho covariance theo regime
 TRADING_DAYS = 252
 
@@ -118,11 +118,14 @@ def _log_regime_diagnostics(cov, returns, regime, symbols):
         pass
 
 
-def get_covariance_matrix(returns, use_ledoit_wolf=True):
+def get_covariance_matrix(returns, use_ledoit_wolf=None):
     """
     Covariance matrix annualized.
-    Ledoit-Wolf shrinkage để tránh singular matrix.
+    use_ledoit_wolf: True=shrink (mượt, dễ equal), False=sample cov (dispersion cao hơn).
+    Mặc định False (USE_LEDOIT_WOLF=1 để bật LW).
     """
+    if use_ledoit_wolf is None:
+        use_ledoit_wolf = __import__("os").environ.get("USE_LEDOIT_WOLF", "0") == "1"
     R = returns.values
     n, p = R.shape
     cov_sample = np.cov(R.T) * TRADING_DAYS
@@ -240,7 +243,7 @@ def erc_weights(cov, min_w=0.0, max_w=1.0, tol=1e-6, max_iter=200):
 # =====================================
 # TOP-K SELECTION + OPTIMIZATION
 # =====================================
-SIGNAL_BLEND = 0.5  # Trộn ERC với signal: 0=pure ERC (dễ đều), 0.5=cân bằng, 1=pure signal
+SIGNAL_BLEND = 0.2  # Giữ ERC làm core, signal chỉ điều chỉnh nhẹ (0.5 → gần equal)
 
 
 def optimize_allocation(

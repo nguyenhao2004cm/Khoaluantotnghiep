@@ -3,12 +3,14 @@
 # =====================================================
 
 import os
+from pathlib import Path
 import pandas as pd
 import numpy as np
 
-RAW_PRICE_FILE = "data_processed/prices/prices.csv"
-OUT_DIR = "data_processed/risk_features"
-os.makedirs(OUT_DIR, exist_ok=True)
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+RAW_PRICE_FILE = PROJECT_DIR / "data_processed/prices/prices.csv"
+OUT_DIR = PROJECT_DIR / "data_processed/risk_features"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 EPS = 1e-8
 WINSOR_LOW = 0.01
@@ -23,7 +25,7 @@ def winsorize_series(s):
 
 def build_risk_features(symbol):
 
-    df = pd.read_csv(RAW_PRICE_FILE)
+    df = pd.read_csv(str(RAW_PRICE_FILE))
 
     df["symbol"] = df["symbol"].str.upper()
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -76,17 +78,14 @@ def build_risk_features(symbol):
 
     out = df[["date"] + feature_cols]
 
-    out.to_csv(
-        f"{OUT_DIR}/{symbol}_risk_features.csv",
-        index=False,
-        encoding="utf-8-sig"
-    )
+    out_path = OUT_DIR / f"{symbol}_risk_features.csv"
+    out.to_csv(str(out_path), index=False, encoding="utf-8-sig")
 
     print(f" Clean risk features built for {symbol}")
 
 
 def run():
-    price_df = pd.read_csv(RAW_PRICE_FILE)
+    price_df = pd.read_csv(str(RAW_PRICE_FILE))
     symbols = price_df["symbol"].unique()
 
     for symbol in symbols:
