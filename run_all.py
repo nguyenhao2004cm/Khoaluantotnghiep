@@ -42,17 +42,17 @@ def main():
         # #=====================================================
         # # STAGE 0 – PRICE DATA
         # # =====================================================
-        # ("src/data/prepare_prices.py",
-        #  "Prepare price panel from raw data"),
+        ("src/data/prepare_prices.py",
+         "Prepare price panel from raw data"),
 
 
         # # =====================================================
         # # STAGE 1 – FEATURE ENGINEERING
         # # =====================================================
-        # ("src/features/build_features.py",
-        #  "Build technical & market features"),
-        # ("src/features/build_risk_features.py",
-        #  "Build technical & market risk features"),
+        ("src/features/build_features.py",
+         "Build technical & market features"),
+        ("src/features/build_risk_features.py",
+         "Build technical & market risk features"),
         # =====================================================
         # STAGE 2 – LATENT REPRESENTATION
         # =====================================================
