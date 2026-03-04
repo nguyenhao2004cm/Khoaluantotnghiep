@@ -125,7 +125,7 @@ const ConfigBar: React.FC<ConfigBarProps> = ({
         <StartDatePicker
           value={startDate}
           onChange={onStartDateChange}
-          label="Ngày bắt đầu tối ưu"
+          label="Ngày bắt đầu tham chiếu"
         />
       </div>
 

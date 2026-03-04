@@ -32,10 +32,11 @@ def main():
         sys.exit(1)
     print("✓ git add -A")
 
-    if not run(["git", "commit", "-m", message]):
-        print("Lỗi: git commit thất bại (có thể không có thay đổi)")
-        sys.exit(1)
-    print(f"✓ git commit -m \"{message}\"")
+    committed = run(["git", "commit", "-m", message])
+    if committed:
+        print(f"✓ git commit -m \"{message}\"")
+    else:
+        print("ℹ Không có thay đổi để commit (tiếp tục push nếu có commit chưa đẩy)")
 
     if not run(["git", "push"]):
         print("Lỗi: git push thất bại")

@@ -1,11 +1,3 @@
-# =====================================================
-# ALLOCATION DIAGNOSTICS — Problem Diagnosis
-# Theo đề xuất thầy: xác định vấn đề bằng dữ liệu
-#
-# Bước 1: Kiểm tra dispersion của signal
-# Bước 2: Kiểm tra cấu trúc rủi ro VIC–VCB (vol, correlation, covariance)
-# Bước 5: Signal có đóng góp gì? Correlation(signal, future volatility/drawdown)
-# =====================================================
 
 import sys
 from pathlib import Path
